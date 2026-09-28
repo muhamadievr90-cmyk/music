@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тон — музыка</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14101f;--bg2:#1e1830;--tx:#f3eeff;--mu:#9b91b8;--ac:#ff5c8a;--ln:rgba(255,255,255,.09)}
+@media (prefers-color-scheme:light){:root{--bg:#f6f2ff;--bg2:#ebe4fb;--tx:#1b1530;--mu:#6d6488;--ln:rgba(0,0,0,.1)}}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--tx);font:400 15px/1.45 Manrope,system-ui,sans-serif;padding:env(safe-area-inset-top) 0 190px}
+h1,h2{font-family:Unbounded,Manrope,sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid #5cc8ff;outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:0 18px}
+.hero{margin:14px 0 26px;border-radius:32px;background:radial-gradient(120% 90% at 50% 0%,var(--bg2),var(--bg));border:1px solid var(--ln);text-align:center;padding:14px 18px 28px}
+canvas{width:100%;height:210px;display:block}
+.hero h1{font-size:26px;letter-spacing:-.02em}
+.hero p{color:var(--mu);margin:6px 0 18px}
+.wave{background:var(--ac);color:#fff;font-weight:700;padding:14px 34px;border-radius:99px;font-size:16px;box-shadow:0 10px 30px -8px var(--ac)}
+.moods{display:flex;gap:8px;overflow-x:auto;margin-top:18px;padding-bottom:4px}
+.moods button{white-space:nowrap;padding:8px 15px;border-radius:99px;border:1px solid var(--ln);color:var(--mu);font-weight:600}
+.moods button.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+h2{font-size:17px;margin:8px 0 10px}
+.row{display:flex;align-items:center;gap:13px;padding:9px 8px;border-radius:16px;cursor:pointer}
+.row:hover,.row.cur{background:var(--bg2)}
+.cv{flex:none;width:52px;height:52px;border-radius:14px;background:var(--bg2) center/cover}
+.m{flex:1;min-width:0}.m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m span{color:var(--mu);font-size:13px}
+.hb{font-size:20px;color:var(--mu);padding:8px}.hb.on{color:var(--ac)}
+.tm{color:var(--mu);font-size:13px;font-variant-numeric:tabular-nums}
+.sr,.key{width:100%;padding:15px 20px;border-radius:99px;border:1px solid var(--ln);background:var(--bg2);color:var(--tx);font:inherit;margin:14px 0}
+.empty{color:var(--mu);padding:22px 8px;text-align:center}
+.card{background:var(--bg2);border-radius:24px;padding:22px;margin:24px 0}
+.card a{color:var(--ac)}
+.nav{position:fixed;left:0;right:0;bottom:0;padding-bottom:env(safe-area-inset-bottom);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);border-top:1px solid var(--ln);z-index:5}
+.nav .in{max-width:720px;margin:0 auto;display:flex}
+.nav button{flex:1;padding:11px 0 8px;color:var(--mu);font-weight:600;font-size:13px}
+.nav button.on{color:var(--tx)}
+.nav button::after{content:"";display:block;width:18px;height:3px;border-radius:3px;margin:4px auto 0}
+.nav button.on::after{background:var(--ac)}
+.pl{position:fixed;left:10px;right:10px;bottom:calc(58px + env(safe-area-inset-bottom));max-width:700px;margin:0 auto;z-index:6;border-radius:24px;padding:12px 14px 10px;color:#fff;background:linear-gradient(120deg,#ff5c8a,#7a4dff);box-shadow:0 18px 40px -12px rgba(0,0,0,.55)}
+.pl .t{display:flex;align-items:center;gap:12px}
+.pl .cv{width:46px;height:46px}.pl .m span{color:rgba(255,255,255,.8)}
+.ct{display:flex;align-items:center}.ct button{font-size:20px;padding:8px 9px}
+.ct .pp{background:#fff;color:#14101f;border-radius:50%;width:46px;height:46px;font-size:18px;padding:0}
+.pg{display:flex;align-items:center;gap:9px;margin-top:6px;font-size:12px;font-variant-numeric:tabular-nums}
+.pg input{flex:1;accent-color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero" id="hero">
+    <canvas id="cv" width="640" height="420"></canvas>
+    <h1>Моя волна</h1>
+    <p id="sub">Легальная музыка независимых артистов со всего мира</p>
+    <button class="wave" id="waveBtn">Включить волну</button>
+    <div class="moods" id="moods"></div>
+  </section>
+  <div id="view"></div>
+</div>
+
+<div class="pl" id="pl">
+  <div class="t">
+    <div class="cv" id="pcv"></div>
+    <div class="m"><b id="pt">Ничего не играет</b><span id="pa">Выберите трек</span></div>
+    <button class="hb" id="plike" style="color:#fff" aria-label="В любимое">♡</button>
+    <div class="ct"><button id="prev" aria-label="Назад">⏮</button><button class="pp" id="pp" aria-label="Играть">▶</button><button id="next" aria-label="Вперёд">⏭</button></div>
+  </div>
+  <div class="pg"><span id="cur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0" aria-label="Перемотка"><span id="dur">0:00</span></div>
+</div>
+
+<nav class="nav"><div class="in">
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="fav">Любимое</button>
+</div></nav>
+
+<script>
+/* 1. Вставьте свой client_id с https://devportal.jamendo.com или введите его на странице */
+const CLIENT_ID = "";
+
+const API = "https://api.jamendo.com/v3.0/tracks/";
+const MOODS = {"Все":"","Бодрость":"energetic","Фокус":"ambient","Расслабление":"relaxing","Ночь":"lounge","Рок":"rock","Электроника":"electronic"};
+const au = new Audio();
+const $ = id => document.getElementById(id);
+const fmt = s => isFinite(s) ? Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0") : "0:00";
+const ls = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}} };
+
+let key = CLIENT_ID || ls.get("ton-key",""), mood = "Все", view = "home", list = [], queue = [], cur = -1, radio = false, favs = ls.get("ton-favs",{});
+
+async function load(params){
+  if(!key) return [];
+  const q = new URLSearchParams({client_id:key,format:"json",limit:40,imagesize:200,audioformat:"mp31",...params});
+  const r = await fetch(API+"?"+q);
+  const j = await r.json();
+  if(j.headers && j.headers.status !== "success") throw new Error(j.headers.error_message || "Ошибка API");
+  return j.results.filter(t=>t.audio).map(t=>({id:t.id,t:t.name,a:t.artist_name,img:t.image,src:t.audio,d:+t.duration||0}));
+}
+const feed = () => load({order:"popularity_week", ...(MOODS[mood]?{tags:MOODS[mood]}:{})});
+
+function rows(arr){
+  if(!arr.length) return '<p class="empty">Ничего не найдено. Попробуйте другой запрос.</p>';
+  return arr.map((x,i)=>`<div class="row ${queue[cur]&&queue[cur].id===x.id?"cur":""}" data-i="${i}" tabindex="0" role="button"><div class="cv" style="background-image:url('${x.img}')"></div><div class="m"><b>${esc(x.t)}</b><span>${esc(x.a)}</span></div><span class="tm">${fmt(x.d)}</span><button class="hb ${favs[x.id]?"on":""}" data-like="${i}" aria-label="В любимое">${favs[x.id]?"♥":"♡"}</button></div>`).join("");
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+async function render(){
+  $("hero").style.display = view==="home" ? "" : "none";
+  const v = $("view");
+  if(!key){
+    v.innerHTML = '<div class="card"><h2>Подключите каталог</h2><p style="margin:8px 0 4px">Нужен бесплатный ключ Jamendo (client_id). Получите его на <a href="https://devportal.jamendo.com" target="_blank" rel="noopener">devportal.jamendo.com</a> и вставьте сюда.</p><input class="key" id="k" placeholder="Например, 1a2b3c4d" autocomplete="off"><button class="wave" id="ks">Сохранить ключ</button></div>';
+    $("ks").onclick = () => { const k=$("k").value.trim(); if(k){key=k;ls.set("ton-key",k);render()} };
+    return;
+  }
+  if(view==="home"){
+    v.innerHTML = '<h2>'+(mood==="Все"?"Популярное на этой неделе":mood)+'</h2><p class="empty">Загружаем…</p>';
+    try{ list = await feed(); }catch(e){ v.innerHTML='<p class="empty">Не удалось загрузить каталог: '+esc(e.message)+'. Проверьте ключ и интернет.</p>'; return }
+    v.innerHTML = '<h2>'+(mood==="Все"?"Популярное на этой неделе":mood)+'</h2>'+rows(list);
+  } else if(view==="search"){
+    v.innerHTML = '<input class="sr" id="q" type="search" placeholder="Трек, исполнитель, жанр" autocomplete="off"><div id="res"><p class="empty">Начните вводить название или имя артиста.</p></div>';
+    let t; $("q").oninput = e => { clearTimeout(t); const s=e.target.value.trim(); t=setTimeout(async()=>{ if(!s) return; try{ list=await load({search:s,order:"relevance"}); $("res").innerHTML=rows(list) }catch(err){ $("res").innerHTML='<p class="empty">Ошибка поиска: '+esc(err.message)+'</p>' } },350) };
+  } else {
+    list = Object.values(favs);
+    v.innerHTML = '<h2>Любимое</h2>'+(list.length?rows(list):'<p class="empty">Нажмите ♡ у трека — он появится здесь.</p>');
+  }
+}
+
+function play(i, from){
+  if(from) queue = from;
+  cur = i; const x = queue[cur];
+  au.src = x.src; au.play().catch(()=>{});
+  $("pt").textContent = x.t; $("pa").textContent = x.a + (radio?" · Моя волна":"");
+  $("pcv").style.backgroundImage = `url('${x.img}')`; $("dur").textContent = fmt(x.d);
+  $("plike").textContent = favs[x.id]?"♥":"♡";
+  document.querySelectorAll(".row").forEach(r=>r.classList.toggle("cur",queue[+r.dataset.i]&&queue[+r.dataset.i].id===x.id&&queue===list));
+  if("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:x.t,artist:x.a,artwork:[{src:x.img,sizes:"200x200"}]});
+}
+function step(d){ if(!queue.length) return; play(radio ? Math.floor(Math.random()*queue.length) : (cur+d+queue.length)%queue.length) }
+function toggleLike(x){ favs[x.id]?delete favs[x.id]:favs[x.id]=x; ls.set("ton-favs",favs); }
+
+au.onplay = au.onpause = () => { $("pp").textContent = au.paused?"▶":"❚❚"; $("waveBtn").textContent = radio&&!au.paused?"Пауза":"Включить волну" };
+au.ontimeupdate = () => { $("cur").textContent=fmt(au.currentTime); if(au.duration){ $("seek").value=au.currentTime/au.duration*1000; $("dur").textContent=fmt(au.duration) } };
+au.onended = () => step(1);
+au.onerror = () => { if(queue.length>1) step(1) };
+$("seek").oninput = e => { if(au.duration) au.currentTime = e.target.value/1000*au.duration };
+$("pp").onclick = () => { if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
+$("next").onclick = () => step(1); $("prev").onclick = () => step(-1);
+$("plike").onclick = () => { if(cur<0) return; toggleLike(queue[cur]); $("plike").textContent=favs[queue[cur].id]?"♥":"♡"; if(view==="fav") render() };
+$("waveBtn").onclick = async () => {
+  if(radio && cur>=0){ au.paused?au.play():au.pause(); return }
+  if(!key) return render();
+  radio = true; try{ const pool = list.length?list:await feed(); list = pool; play(Math.floor(Math.random()*pool.length), pool) }catch{}
+};
+document.addEventListener("click", e => {
+  const l = e.target.closest("[data-like]");
+  if(l){ toggleLike(list[+l.dataset.like]); render(); return }
+  const r = e.target.closest(".row");
+  if(r){ radio=false; play(+r.dataset.i, list) }
+});
+document.addEventListener("keydown", e => { if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("row")){ e.preventDefault(); e.target.click() } });
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => { view=b.dataset.v; document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("on",x===b)); render(); scrollTo(0,0) });
+$("moods").innerHTML = Object.keys(MOODS).map(m=>`<button class="${m===mood?"on":""}">${m}</button>`).join("");
+$("moods").onclick = e => { const b=e.target.closest("button"); if(!b) return; mood=b.textContent; radio=false; list=[]; $("moods").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); render() };
+
+/* Визуализатор: анимация «капли», пока играет музыка */
+const c=$("cv"),g=c.getContext("2d");let ph=0,amp=0;
+(function draw(){
+  requestAnimationFrame(draw); if(view!=="home") return;
+  const W=c.width,H=c.height; g.clearRect(0,0,W,H);
+  const on=!au.paused; ph+=on?.02:.005; amp+=((on?1:.2)-amp)*.05;
+  const hue = cur>=0 ? (parseInt(queue[cur].id,10)*47)%360 : 335;
+  const beat = on ? (Math.sin(ph*9)*.5+.5)*.4 : 0;
+  for(let k=3;k>=0;k--){
+    g.beginPath();
+    for(let i=0;i<=96;i++){
+      const t=i/96*Math.PI*2, r=88+beat*22+k*15+Math.sin(t*3+ph*2+k)*(5+amp*18)+Math.cos(t*5-ph)*(3+amp*9);
+      const px=W/2+Math.cos(t)*r*1.35, py=H/2+Math.sin(t)*r*.92; i?g.lineTo(px,py):g.moveTo(px,py);
+    }
+    g.closePath(); g.fillStyle=`hsla(${(hue+k*22)%360},90%,62%,${k===0?.95:.13})`; g.fill();
+  }
+})();
+render();
+</script>
+</body>
+</html>
