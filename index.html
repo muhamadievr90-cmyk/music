@@ -14,13 +14,13 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>♪</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#1a0a0e;--bg2:#2a0e14;--tx:#f8e8ea;--mu:#b89aa0;--ac:#ff5c8a;--ln:rgba(255,255,255,.09)}
+:root{--bg:#14101f;--bg2:#1e1830;--tx:#f3eeff;--mu:#9b91b8;--ac:#ff5c8a;--ln:rgba(255,255,255,.09)}
 @media (prefers-color-scheme:light){:root{--bg:#f6f2ff;--bg2:#ebe4fb;--tx:#1b1530;--mu:#6d6488;--ln:rgba(0,0,0,.1)}}
 *{box-sizing:border-box;margin:0}
 body{
   background:
     radial-gradient(circle at 50% 35%, transparent 0, transparent 80px, rgba(0,0,0,0) 81px),
-    repeating-conic-gradient(from 0deg at 50% 35%, transparent 0deg, transparent 6deg, rgba(140,15,25,0.55) 6deg, rgba(140,15,25,0.55) 9deg),
+    repeating-conic-gradient(from 0deg at 50% 35%, transparent 0deg, transparent 6deg, rgba(0,0,0,0.28) 6deg, rgba(0,0,0,0.28) 9deg),
     radial-gradient(120% 90% at 50% 35%, var(--bg2), var(--bg));
   background-attachment: fixed;
   color:var(--tx);
@@ -244,7 +244,65 @@ async function render(){
       const rid = c.dataset.radio;
       const r = RADIOS.find(x=>x.id===rid);
       if(!r) return;
-      if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; render(); toast("⏹ Радио остановлено"); return }
+      if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; /* === Dynamic sky theme based on time of day === */
+function applySkyTheme(){
+  const h = new Date().getHours();
+  let theme;
+  if(h>=5 && h<11){
+    // Morning: рассвет с солнцем — soft pink-orange sunrise
+    theme = {
+      skyTop:'#ff9e7d', skyBottom:'#ffd29e',
+      sunColor:'#ff6b35', sunGlow:'rgba(255,150,80,0.6)',
+      stripeColor:'rgba(255,200,150,0.4)',
+      bg:'#ff9e7d', bg2:'#ffd29e', tx:'#3a1a0a', mu:'#6a3a1a',
+      ac:'#ff5c8a', ln:'rgba(80,40,20,0.15)'
+    };
+  } else if(h>=11 && h<17){
+    // Day: просто солнышко — bright blue sky with yellow sun
+    theme = {
+      skyTop:'#4a9fff', skyBottom:'#a3d5ff',
+      sunColor:'#ffeb3b', sunGlow:'rgba(255,235,59,0.7)',
+      stripeColor:'rgba(255,255,255,0.3)',
+      bg:'#4a9fff', bg2:'#a3d5ff', tx:'#0a1a3a', mu:'#2a4a7a',
+      ac:'#ff5c8a', ln:'rgba(255,255,255,0.2)'
+    };
+  } else if(h>=17 && h<21){
+    // Evening: закат — deep orange-red sunset
+    theme = {
+      skyTop:'#c43e3e', skyBottom:'#ff7e5f',
+      sunColor:'#ff3c1f', sunGlow:'rgba(255,80,40,0.7)',
+      stripeColor:'rgba(80,15,25,0.6)',
+      bg:'#c43e3e', bg2:'#ff7e5f', tx:'#fff0e8', mu:'#ffd0c0',
+      ac:'#ff5c8a', ln:'rgba(255,255,255,0.12)'
+    };
+  } else {
+    // Night: тёмная ночь с луной — dark night with moon
+    theme = {
+      skyTop:'#0a0a1f', skyBottom:'#1a1a3a',
+      sunColor:'#e8e8ff', sunGlow:'rgba(200,200,255,0.4)',
+      stripeColor:'rgba(80,80,140,0.4)',
+      bg:'#0a0a1f', bg2:'#1a1a3a', tx:'#e8e8ff', mu:'#8888bb',
+      ac:'#7c8cff', ln:'rgba(255,255,255,0.08)'
+    };
+  }
+  const r = document.documentElement.style;
+  r.setProperty('--bg', theme.bg);
+  r.setProperty('--bg2', theme.bg2);
+  r.setProperty('--tx', theme.tx);
+  r.setProperty('--mu', theme.mu);
+  r.setProperty('--ac', theme.ac);
+  r.setProperty('--ln', theme.ln);
+  r.setProperty('--sun-color', theme.sunColor);
+  r.setProperty('--sun-glow', theme.sunGlow);
+  r.setProperty('--stripe-color', theme.stripeColor);
+  r.setProperty('--sky-top', theme.skyTop);
+  r.setProperty('--sky-bottom', theme.skyBottom);
+}
+applySkyTheme();
+// Update every 5 minutes in case user keeps app open
+setInterval(applySkyTheme, 5*60*1000);
+
+render(); toast("⏹ Радио остановлено"); return }
       liveRadio = rid; radio = false; cur = -1; queue = [];
       au.src = r.src; au.play().catch(()=>{});
       $("pt").textContent = r.name; $("pa").textContent = "LIVE · "+r.desc;
