@@ -1,5 +1,5 @@
 // Service Worker: Музыка всегда с собой
-const CACHE = "music-v2";
+const CACHE = "music-v3";
 const STATIC = ["/", "/index.html", "/manifest.json"];
 const API_CACHE = "music-api-v1";
 const AUDIO_CACHE = "music-audio-v1";
@@ -20,7 +20,7 @@ self.addEventListener("activate", e => {
   );
 });
 
-// Fetch: network-first for API, cache-first for static, cache audio
+// Fetch: network-first for HTML (instant updates), cache-first for static, cache audio
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
 
@@ -53,6 +53,18 @@ self.addEventListener("fetch", e => {
     return;
   }
 
+  // HTML documents: network-first (so users see updates immediately)
+  if (e.request.mode === "navigate" || e.request.destination === "document") {
+    e.respondWith(
+      fetch(e.request).then(r => {
+        const clone = r.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return r;
+      }).catch(() => caches.match(e.request).then(c => c || caches.match("/index.html")))
+    );
+    return;
+  }
+
   // Static: cache-first, network fallback
   e.respondWith(
     caches.match(e.request).then(cached => {
@@ -64,7 +76,6 @@ self.addEventListener("fetch", e => {
         }
         return r;
       }).catch(() => {
-        // Offline fallback page
         if (e.request.mode === "navigate") {
           return caches.match("/index.html");
         }
