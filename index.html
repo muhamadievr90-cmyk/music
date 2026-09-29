@@ -155,7 +155,7 @@ const API = "https://api.jamendo.com/v3.0";
 /* === Audius API === */
 const AUDIUS_HOST = "https://discoveryprovider.audius.co";
 const AUDIUS_APP = "MusicAlwaysWithMe";
-let source = ls.get("m-source", "jamendo"); // "jamendo" | "audius"
+// source will be initialized after ls is defined
 
 async function audiusFetch(path){
   const r = await fetch(AUDIUS_HOST + path + (path.includes("?")?"&":"?") + "app_name=" + AUDIUS_APP);
@@ -203,6 +203,7 @@ const au = new Audio();
 const $ = id => document.getElementById(id);
 const fmt = s => isFinite(s) ? Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0") : "0:00";
 const ls = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}} };
+let source = ls.get("m-source", "jamendo"); // "jamendo" | "audius"
 
 let mood = "Все", view = "home", list = [], queue = [], cur = -1, radio = false, liveRadio = null;
 let favs = ls.get("m-favs",{}), hist = ls.get("m-hist",[]);
