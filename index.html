@@ -452,8 +452,38 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferr
 $("installBtn").onclick = async () => { if(deferredPrompt){ deferredPrompt.prompt(); const r=await deferredPrompt.userChoice; if(r.outcome==="accepted") toast("Приложение установлено!"); deferredPrompt=null } $("installBar").classList.remove("show") };
 $("installX").onclick = () => $("installBar").classList.remove("show");
 
-/* === Service Worker === */
-if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").then(()=>console.log("SW ok")).catch(()=>console.log("SW fail")) }
+/* === Service Worker (force update) === */
+if("serviceWorker" in navigator){
+  // Listen for new SW taking control → reload
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    console.log("SW controller changed → reloading");
+    window.location.reload();
+  });
+
+  // Register and force update
+  navigator.serviceWorker.register("sw.js", {updateViaCache: "none"}).then(reg => {
+    console.log("SW registered");
+    // Force check for update immediately
+    reg.update();
+    // If new SW is waiting, force it to activate
+    if(reg.waiting){
+      console.log("New SW waiting → activating");
+      reg.waiting.postMessage("SKIP_WAITING");
+    }
+    // When a new SW is found and installed, activate it
+    reg.addEventListener("updatefound", () => {
+      const newSW = reg.installing;
+      if(newSW){
+        newSW.addEventListener("statechange", () => {
+          if(newSW.state === "installed" && navigator.serviceWorker.controller){
+            console.log("New SW installed → activating");
+            newSW.postMessage("SKIP_WAITING");
+          }
+        });
+      }
+    });
+  }).catch(e => console.log("SW fail:", e));
+}
 
 /* === Dynamic sky theme + Source toggle === */
 applySkyTheme();

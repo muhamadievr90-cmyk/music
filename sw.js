@@ -1,21 +1,29 @@
 // Service Worker: Музыка всегда с собой
-const CACHE = "music-v7";
+const CACHE = "music-v8";
 const STATIC = ["/", "/index.html", "/manifest.json"];
 const API_CACHE = "music-api-v1";
 const AUDIO_CACHE = "music-audio-v1";
 
-// Install: cache static assets
+// Listen for SKIP_WAITING message from page
+self.addEventListener("message", e => {
+  if(e.data === "SKIP_WAITING") self.skipWaiting();
+});
+
+// Install: cache static assets + force activate
 self.addEventListener("install", e => {
   e.waitUntil(
     caches.open(CACHE).then(c => c.addAll(STATIC)).then(() => self.skipWaiting())
   );
 });
 
-// Activate: clean old caches
+// Activate: delete ALL old caches + force claim
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => ![CACHE, API_CACHE, AUDIO_CACHE].includes(k)).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE).map(k => {
+        console.log("Deleting old cache:", k);
+        return caches.delete(k);
+      }))
     ).then(() => self.clients.claim())
   );
 });
