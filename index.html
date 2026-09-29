@@ -143,7 +143,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
   <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
@@ -231,50 +231,6 @@ async function loadTatarBashkir(){
   }
   return combined;
 }
-
-/* === Russian Chanson === */
-const CHANSON_QUERIES = [
-  "русский шансон", "шансон", "Mikhail Shufutinsky", "Grigory Leps",
-  "Stas Mikhaylov", "Butyrka", "Сергей Трофимов", "Alexander Rosenbaum"
-];
-
-async function loadChanson(){
-  const all = await Promise.all(CHANSON_QUERIES.map(q => itunesSearch(q).catch(() => [])));
-  const seen = new Set();
-  const combined = [];
-  for(const list of all){
-    for(const t of list){
-      if(!seen.has(t.id)){
-        seen.add(t.id);
-        combined.push(t);
-        if(combined.length >= 50) break;
-      }
-    }
-  }
-  return combined;
-}
-
-/* === Viktor Tsoi / Kino === */
-const TSOI_QUERIES = [
-  "Виктор Цой", "Виктор Цой Кино", "Tsoi Kino",
-  "Kino группа крови", "Kino Звезда по имени Солнце"
-];
-
-async function loadTsoi(){
-  const all = await Promise.all(TSOI_QUERIES.map(q => itunesSearch(q).catch(() => [])));
-  const seen = new Set();
-  const combined = [];
-  for(const list of all){
-    for(const t of list){
-      if(!seen.has(t.id)){
-        seen.add(t.id);
-        combined.push(t);
-        if(combined.length >= 50) break;
-      }
-    }
-  }
-  return combined;
-}
 const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental"};
 const PER_PAGE = 20;
 const RADIOS = [
@@ -284,8 +240,7 @@ const RADIOS = [
   {id:"ash", name:"Ашкадар", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/ashkadar.mp3"},
   {id:"yul", name:"Юлдаш", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/uldash.mp3"},
   {id:"mat", name:"Матур Радио", desc:"Башкирское радио", src:"http://radio.matur-tv.ru/radio/radio-mp3-128k"},
-  {id:"kit", name:"Милли радио Китап", desc:"Татарское радио", src:"http://radio.tatmedia.com:8800/kitapfm"},
-  {id:"shn", name:"Радио Шансон", desc:"Русский шансон 24/7", src:"https://chanson.hostingradio.ru:8041/chanson256.mp3"}
+  {id:"kit", name:"Милли радио Китап", desc:"Татарское радио", src:"http://radio.tatmedia.com:8800/kitapfm"}
 ];
 const au = new Audio();
 const $ = id => document.getElementById(id);
