@@ -1,5 +1,5 @@
 // Service Worker: Музыка всегда с собой
-const CACHE = "music-v6";
+const CACHE = "music-v7";
 const STATIC = ["/", "/index.html", "/manifest.json"];
 const API_CACHE = "music-api-v1";
 const AUDIO_CACHE = "music-audio-v1";

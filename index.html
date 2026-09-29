@@ -332,33 +332,6 @@ function applySkyTheme(){
   r.setProperty('--sky-top', theme.skyTop);
   r.setProperty('--sky-bottom', theme.skyBottom);
 }
-applySkyTheme();
-// Update every 5 minutes in case user keeps app open
-setInterval(applySkyTheme, 5*60*1000);
-
-/* === Source toggle handler === */
-function updateSrcToggle(){
-  const btn = $("srcToggle");
-  if(!btn) return;
-  if(source === "audius"){
-    btn.textContent = "🎵 Audius";
-    btn.classList.add("audius");
-  } else {
-    btn.textContent = "🎵 Jamendo";
-    btn.classList.remove("audius");
-  }
-}
-updateSrcToggle();
-$("srcToggle") && $("srcToggle").addEventListener("click", () => {
-  source = source === "jamendo" ? "audius" : "jamendo";
-  ls.set("m-source", source);
-  updateSrcToggle();
-  // Reload current view
-  if(view === "home") feed();
-  else if(view === "search") { const q = $("q").value.trim(); if(q) loadSearch(q).then(l => { list = l; page = 0; render(); }); }
-  toast(source === "audius" ? "🎵 Источник: Audius" : "🎵 Источник: Jamendo");
-});
-
 render(); toast("⏹ Радио остановлено"); return }
       liveRadio = rid; radio = false; cur = -1; queue = [];
       au.src = r.src; au.play().catch(()=>{});
@@ -481,6 +454,31 @@ $("installX").onclick = () => $("installBar").classList.remove("show");
 
 /* === Service Worker === */
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").then(()=>console.log("SW ok")).catch(()=>console.log("SW fail")) }
+
+/* === Dynamic sky theme + Source toggle === */
+applySkyTheme();
+setInterval(applySkyTheme, 5*60*1000);
+
+function updateSrcToggle(){
+  const btn = $("srcToggle");
+  if(!btn) return;
+  if(source === "audius"){
+    btn.textContent = "🎵 Audius";
+    btn.classList.add("audius");
+  } else {
+    btn.textContent = "🎵 Jamendo";
+    btn.classList.remove("audius");
+  }
+}
+updateSrcToggle();
+$("srcToggle") && $("srcToggle").addEventListener("click", () => {
+  source = source === "jamendo" ? "audius" : "jamendo";
+  ls.set("m-source", source);
+  updateSrcToggle();
+  if(view === "home") feed();
+  else if(view === "search") { const q = $("q").value.trim(); if(q) loadSearch(q).then(l => { list = l; page = 0; render(); }); }
+  toast(source === "audius" ? "🎵 Источник: Audius" : "🎵 Источник: Jamendo");
+});
 
 render();
 </script>
