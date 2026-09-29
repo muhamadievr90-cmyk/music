@@ -106,8 +106,8 @@ h2{font-size:17px;margin:8px 0 10px}
   <section class="hero" id="hero">
     <canvas id="cv" width="640" height="420"></canvas>
     <h1>Моя волна</h1>
-    <p id="sub">Бесплатная музыка и радио — без регистрации</p>
-    <button class="wave" id="waveBtn">Включить волну</button>
+    <p id="sub">Полные треки и радио — бесплатно и легально</p>
+    <button class="wave" id="waveBtn">Слушать бесплатно</button>
     <div class="moods" id="moods"></div>
   </section>
   <div id="view"></div>
@@ -140,9 +140,10 @@ h2{font-size:17px;margin:8px 0 10px}
 </div></nav>
 
 <script>
-/* === Deezer API — без ключа, без регистрации === */
-const API = "https://api.deezer.com";
-const GENRES = {"Все":0,"Поп":132,"Рэп":116,"Рок":152,"Электроника":106,"R&B":165,"Альтернатива":85,"Реггетон":122,"Танцевальная":113};
+/* === Jamendo API — полные треки, бесплатно и легально (Creative Commons) === */
+const JAMENDO_CLIENT_ID = "32d7ec41";
+const API = "https://api.jamendo.com/v3.0";
+const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental"};
 const PER_PAGE = 20;
 const RADIOS = [
   {id:"roksana",name:"Радио Роксана",icon:"📻",desc:"Лирические хиты 24/7",src:"http://listen9.myradio24.com/2761",img:""},
@@ -185,21 +186,21 @@ $("shuffleBtn").onclick = () => { shuffleOn = !shuffleOn; $("shuffleBtn").classL
 let toastTimer;
 function toast(msg){ $("toast").textContent=msg; $("toast").classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>$("toast").classList.remove("show"),2000) }
 
-/* === Deezer API === */
-async function deezerFetch(endpoint){
-  const r = await fetch(API+"/"+endpoint);
+/* === Jamendo API === */
+async function jamendoFetch(endpoint){
+  const r = await fetch(API+"/"+endpoint+"&client_id="+JAMENDO_CLIENT_ID+"&format=json&audioformat=mp32&include=musicinfo");
   return r.json();
 }
-async function loadChart(genreId){
-  const path = genreId ? `chart/${genreId}/tracks?limit=50` : `chart/0/tracks?limit=50`;
-  const data = await deezerFetch(path);
-  return (data.data||[]).map(t=>({id:String(t.id),t:t.title,a:t.artist.name,img:t.album.cover_medium,src:t.preview,d:t.duration}));
+async function loadChart(genre){
+  const tag = genre ? `&fuzzytags=${encodeURIComponent(genre)}` : "";
+  const data = await jamendoFetch("tracks/?limit=50&order=popularity_total"+tag);
+  return (data.results||[]).map(t=>({id:String(t.id),t:t.name,a:t.artist_name,img:t.image,src:t.audio,d:Number(t.duration)}));
 }
 async function loadSearch(query){
-  const data = await deezerFetch(`search?q=${encodeURIComponent(query)}&limit=50`);
-  return (data.data||[]).map(t=>({id:String(t.id),t:t.title,a:t.artist.name,img:t.album.cover_medium,src:t.preview,d:t.duration}));
+  const data = await jamendoFetch("tracks/?limit=50&search="+encodeURIComponent(query));
+  return (data.results||[]).map(t=>({id:String(t.id),t:t.name,a:t.artist_name,img:t.image,src:t.audio,d:Number(t.duration)}));
 }
-const feed = () => loadChart(GENRES[mood]||0);
+const feed = () => loadChart(GENRES[mood]||"");
 
 /* === Skeleton loading === */
 function skeletons(n){ return Array(n).fill('<div class="skel"></div>').join("") }
@@ -292,7 +293,7 @@ function step(d){
 function toggleLike(x){ favs[x.id]?delete favs[x.id]:favs[x.id]=x; ls.set("m-favs",favs); toast(favs[x.id]?"♥ Добавлено в любимое":"Убрано из любимого") }
 
 /* === События плеера === */
-au.onplay = au.onpause = () => { $("pp").textContent = au.paused?"▶":"❚❚"; $("waveBtn").textContent = radio&&!au.paused?"Пауза":"Включить волну" };
+au.onplay = au.onpause = () => { $("pp").textContent = au.paused?"▶":"❚❚"; $("waveBtn").textContent = radio&&!au.paused?"Пауза":"Слушать бесплатно" };
 au.ontimeupdate = () => { if(liveRadio) return; $("cur").textContent=fmt(au.currentTime); if(au.duration){ $("seek").value=au.currentTime/au.duration*1000; $("dur").textContent=fmt(au.duration) } };
 au.onended = () => { if(liveRadio){au.play();return} if(repeatMode===2){au.currentTime=0;au.play();return} step(1) };
 au.onerror = () => { if(liveRadio){toast("⚠ Поток радио прерван");liveRadio=null;render();return} if(queue.length>1) step(1) };
