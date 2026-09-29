@@ -143,7 +143,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
   <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
@@ -193,11 +193,54 @@ async function audiusSearch(query){
     d: Number(t.duration) || 0
   }));
 }
+/* === iTunes Search API (30-sec previews, commercial music) === */
+async function itunesSearch(query){
+  const r = await fetch("https://itunes.apple.com/search?term="+encodeURIComponent(query)+"&limit=50&media=music");
+  if(!r.ok) throw new Error("iTunes "+r.status);
+  const data = await r.json();
+  return (data.results||[]).map(t=>({
+    id: "it_"+t.trackId,
+    t: t.trackName || "Unknown",
+    a: t.artistName || "Unknown",
+    img: t.artworkUrl100 || "",
+    src: t.previewUrl || "",
+    d: Number(t.trackTimeMillis)/1000 || 30
+  })).filter(t => t.src); // only tracks with preview
+}
+
+/* === Tatar/Bashkir curated search queries === */
+const TB_QUERIES = [
+  "татар музыка", "башкир музыка", "tatar song", "bashkir song",
+  "Идрис Газиев", "Salavat", "Башкорт", "tatar music"
+];
+
+async function loadTatarBashkir(){
+  // Search multiple queries and combine
+  const all = await Promise.all(TB_QUERIES.map(q => itunesSearch(q).catch(() => [])));
+  // Flatten, dedupe by id, limit to 50
+  const seen = new Set();
+  const combined = [];
+  for(const list of all){
+    for(const t of list){
+      if(!seen.has(t.id)){
+        seen.add(t.id);
+        combined.push(t);
+        if(combined.length >= 50) break;
+      }
+    }
+  }
+  return combined;
+}
 const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental"};
 const PER_PAGE = 20;
 const RADIOS = [
-  {id:"roksana",name:"Радио Роксана",icon:"📻",desc:"Лирические хиты 24/7",src:"http://listen9.myradio24.com/2761",img:""},
-  {id:"rusradio",name:"Русское Радио",icon:"🇷🇺",desc:"Всё будет хорошо!",src:"http://23.105.238.4/rusradio128.mp3",img:""}
+  {id:"rr", name:"Радио Роксана", desc:"Русское радио", src:"https://rrfm.bcradio.ru/live"},
+  {id:"rru", name:"Русское Радио", desc:"Москва", src:"https://rrfm.bcradio.ru/rru"},
+  {id:"tat", name:"Tatar Radiosi", desc:"Татарское радио 100.5 FM", src:"https://tatarradio.hostingradio.ru/tatarradio320.mp3"},
+  {id:"ash", name:"Ашкадар", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/ashkadar.mp3"},
+  {id:"yul", name:"Юлдаш", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/uldash.mp3"},
+  {id:"mat", name:"Матур Радио", desc:"Башкирское радио", src:"http://radio.matur-tv.ru/radio/radio-mp3-128k"},
+  {id:"kit", name:"Милли радио Китап", desc:"Татарское радио", src:"http://radio.tatmedia.com:8800/kitapfm"}
 ];
 const au = new Audio();
 const $ = id => document.getElementById(id);
