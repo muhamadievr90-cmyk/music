@@ -143,7 +143,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
   <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
@@ -231,28 +231,6 @@ async function loadTatarBashkir(){
   }
   return combined;
 }
-
-/* === Russian Chanson === */
-const CHANSON_QUERIES = [
-  "русский шансон", "шансон", "Mikhail Shufutinsky", "Grigory Leps",
-  "Stas Mikhaylov", "Butyrka", "Сергей Трофимов", "Alexander Rosenbaum"
-];
-
-async function loadChanson(){
-  const all = await Promise.all(CHANSON_QUERIES.map(q => itunesSearch(q).catch(() => [])));
-  const seen = new Set();
-  const combined = [];
-  for(const list of all){
-    for(const t of list){
-      if(!seen.has(t.id)){
-        seen.add(t.id);
-        combined.push(t);
-        if(combined.length >= 50) break;
-      }
-    }
-  }
-  return combined;
-}
 const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental"};
 const PER_PAGE = 20;
 const RADIOS = [
@@ -262,8 +240,7 @@ const RADIOS = [
   {id:"ash", name:"Ашкадар", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/ashkadar.mp3"},
   {id:"yul", name:"Юлдаш", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/uldash.mp3"},
   {id:"mat", name:"Матур Радио", desc:"Башкирское радио", src:"http://radio.matur-tv.ru/radio/radio-mp3-128k"},
-  {id:"kit", name:"Милли радио Китап", desc:"Татарское радио", src:"http://radio.tatmedia.com:8800/kitapfm"},
-  {id:"shn", name:"Радио Шансон", desc:"Русский шансон 24/7", src:"https://chanson.hostingradio.ru:8041/chanson256.mp3"}
+  {id:"kit", name:"Милли радио Китап", desc:"Татарское радио", src:"http://radio.tatmedia.com:8800/kitapfm"}
 ];
 const au = new Audio();
 const $ = id => document.getElementById(id);
@@ -339,26 +316,6 @@ async function render(){
   } else if(view==="search"){
     v.innerHTML = '<input class="sr" id="q" type="search" placeholder="Трек, исполнитель, жанр" autocomplete="off"><div id="res"><p class="empty">Начните вводить название или имя артиста.</p></div>';
     let t; $("q").oninput = e => { clearTimeout(t); const s=e.target.value.trim(); t=setTimeout(async()=>{ if(!s) return; $("res").innerHTML=skeletons(4); try{ allTracks=await loadSearch(s); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager(); if(!hist.includes(s)){hist.unshift(s);if(hist.length>30)hist.pop();ls.set("m-hist",hist)} }catch(err){ $("res").innerHTML='<p class="empty">Ошибка поиска: '+esc(err.message)+'</p>' } },350) };
-  } else if(view==="tb"){
-    v.innerHTML = '<h2>🎵 Татарско-башкирская музыка</h2><p class="sub">Коммерческие треки (30-сек превью) из iTunes</p><div id="res">'+skeletons(6)+'</div>';
-    loadTatarBashkir().then(tracks => {
-      allTracks = tracks; totalLoaded = tracks.length; page = 0;
-      list = paginatedList(allTracks, page);
-      $("res").innerHTML = rows(list) + pagerHTML();
-      bindPager();
-    }).catch(err => {
-      $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
-    });
-  } else if(view==="ch"){
-    v.innerHTML = '<h2>🎤 Русский шансон</h2><p class="sub">Шуфутинский, Лепс, Михайлов, Бутырка и др. (30-сек превью)</p><div id="res">'+skeletons(6)+'</div>';
-    loadChanson().then(tracks => {
-      allTracks = tracks; totalLoaded = tracks.length; page = 0;
-      list = paginatedList(allTracks, page);
-      $("res").innerHTML = rows(list) + pagerHTML();
-      bindPager();
-    }).catch(err => {
-      $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
-    });
   } else if(view==="radio"){
     v.innerHTML = '<h2>📻 Радио</h2><div class="radio-grid">'+RADIOS.map(r=>`<div class="radio-card${liveRadio===r.id?" playing":""}" data-radio="${r.id}"><div class="ricon">${r.icon}</div><div class="rname">${esc(r.name)}${liveRadio===r.id?'<span class="radio-live">LIVE</span>':''}</div><div class="rdesc">${esc(r.desc)}</div></div>`).join("")+'</div><p style="color:var(--mu);font-size:13px;margin-top:12px;text-align:center">Нажмите на станцию — радио начнёт играть</p>';
     v.querySelectorAll(".radio-card").forEach(c => c.onclick = () => {
