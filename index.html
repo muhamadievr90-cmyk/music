@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Музыка всегда с собой</title>
-<meta name="description" content="Музыкальный плеер — бесплатная музыка на любом устройстве">
+<meta name="description" content="Музыкальный плеер и радио — бесплатная музыка на любом устройстве">
 <meta name="theme-color" content="#ff5c8a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f6f2ff" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@ h2{font-size:17px;margin:8px 0 10px}
 .card a{color:var(--ac)}
 .nav{position:fixed;left:0;right:0;bottom:0;padding-bottom:env(safe-area-inset-bottom);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);border-top:1px solid var(--ln);z-index:5}
 .nav .in{max-width:720px;margin:0 auto;display:flex}
-.nav button{flex:1;padding:11px 0 8px;color:var(--mu);font-weight:600;font-size:13px}
+.nav button{flex:1;padding:11px 0 8px;color:var(--mu);font-weight:600;font-size:12px}
 .nav button.on{color:var(--tx)}
 .nav button::after{content:"";display:block;width:18px;height:3px;border-radius:3px;margin:4px auto 0}
 .nav button.on::after{background:var(--ac)}
@@ -80,7 +80,16 @@ h2{font-size:17px;margin:8px 0 10px}
 .pager button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .hist-tag{display:inline-block;padding:4px 12px;border-radius:99px;border:1px solid var(--ln);color:var(--mu);font-size:13px;margin:3px;cursor:pointer}
 .hist-tag:hover{border-color:var(--ac);color:var(--ac)}
-.preview-badge{font-size:10px;background:rgba(255,255,255,.15);padding:2px 6px;border-radius:6px;color:rgba(255,255,255,.7);margin-left:4px}
+/* Radio styles */
+.radio-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.radio-card{background:var(--bg2);border-radius:20px;padding:20px 16px;text-align:center;cursor:pointer;border:2px solid var(--ln);transition:border-color .2s,transform .15s}
+.radio-card:hover{border-color:var(--ac);transform:scale(1.02)}
+.radio-card.playing{border-color:var(--ac);box-shadow:0 0 20px -4px var(--ac)}
+.radio-card .ricon{font-size:40px;margin-bottom:8px}
+.radio-card .rname{font-weight:700;font-size:15px;margin-bottom:4px}
+.radio-card .rdesc{color:var(--mu);font-size:12px}
+.radio-live{display:inline-block;background:var(--ac);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px;animation:pulse-live 1.5s infinite}
+@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.5}}
 </style>
 </head>
 <body>
@@ -97,7 +106,7 @@ h2{font-size:17px;margin:8px 0 10px}
   <section class="hero" id="hero">
     <canvas id="cv" width="640" height="420"></canvas>
     <h1>Моя волна</h1>
-    <p id="sub">Бесплатная музыка — без регистрации и ключей</p>
+    <p id="sub">Бесплатная музыка и радио — без регистрации</p>
     <button class="wave" id="waveBtn">Включить волну</button>
     <div class="moods" id="moods"></div>
   </section>
@@ -127,7 +136,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="fav">Любимое</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
 </div></nav>
 
 <script>
@@ -135,12 +144,16 @@ h2{font-size:17px;margin:8px 0 10px}
 const API = "https://api.deezer.com";
 const GENRES = {"Все":0,"Поп":132,"Рэп":116,"Рок":152,"Электроника":106,"R&B":165,"Альтернатива":85,"Реггетон":122,"Танцевальная":113};
 const PER_PAGE = 20;
+const RADIOS = [
+  {id:"roksana",name:"Радио Роксана",icon:"📻",desc:"Лирические хиты 24/7",src:"http://listen9.myradio24.com/2761",img:""},
+  {id:"rusradio",name:"Русское Радио",icon:"🇷🇺",desc:"Всё будет хорошо!",src:"http://23.105.238.4/rusradio128.mp3",img:""}
+];
 const au = new Audio();
 const $ = id => document.getElementById(id);
 const fmt = s => isFinite(s) ? Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0") : "0:00";
 const ls = { get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}} };
 
-let mood = "Все", view = "home", list = [], queue = [], cur = -1, radio = false;
+let mood = "Все", view = "home", list = [], queue = [], cur = -1, radio = false, liveRadio = null;
 let favs = ls.get("m-favs",{}), hist = ls.get("m-hist",[]);
 let page = 0, totalLoaded = 0, allTracks = [];
 let repeatMode = 0, shuffleOn = false;
@@ -214,6 +227,22 @@ async function render(){
   } else if(view==="search"){
     v.innerHTML = '<input class="sr" id="q" type="search" placeholder="Трек, исполнитель, жанр" autocomplete="off"><div id="res"><p class="empty">Начните вводить название или имя артиста.</p></div>';
     let t; $("q").oninput = e => { clearTimeout(t); const s=e.target.value.trim(); t=setTimeout(async()=>{ if(!s) return; $("res").innerHTML=skeletons(4); try{ allTracks=await loadSearch(s); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager(); if(!hist.includes(s)){hist.unshift(s);if(hist.length>30)hist.pop();ls.set("m-hist",hist)} }catch(err){ $("res").innerHTML='<p class="empty">Ошибка поиска: '+esc(err.message)+'</p>' } },350) };
+  } else if(view==="radio"){
+    v.innerHTML = '<h2>📻 Радио</h2><div class="radio-grid">'+RADIOS.map(r=>`<div class="radio-card${liveRadio===r.id?" playing":""}" data-radio="${r.id}"><div class="ricon">${r.icon}</div><div class="rname">${esc(r.name)}${liveRadio===r.id?'<span class="radio-live">LIVE</span>':''}</div><div class="rdesc">${esc(r.desc)}</div></div>`).join("")+'</div><p style="color:var(--mu);font-size:13px;margin-top:12px;text-align:center">Нажмите на станцию — радио начнёт играть</p>';
+    v.querySelectorAll(".radio-card").forEach(c => c.onclick = () => {
+      const rid = c.dataset.radio;
+      const r = RADIOS.find(x=>x.id===rid);
+      if(!r) return;
+      if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; render(); toast("⏹ Радио остановлено"); return }
+      liveRadio = rid; radio = false; cur = -1; queue = [];
+      au.src = r.src; au.play().catch(()=>{});
+      $("pt").textContent = r.name; $("pa").textContent = "LIVE · "+r.desc;
+      $("pcv").style.backgroundImage = ""; $("dur").textContent = "LIVE";
+      $("pp").textContent = "❚❚"; $("plike").textContent = "♡";
+      if("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:r.name,artist:"Radio Live"});
+      render();
+      toast("📻 "+r.name);
+    });
   } else if(view==="fav"){
     allTracks = Object.values(favs);
     page = 0; list = paginatedList(allTracks, page);
@@ -241,6 +270,7 @@ function bindPager(){
 function play(i, from){
   if(from) queue = from;
   cur = i; const x = queue[cur];
+  liveRadio = null;
   au.src = x.src; au.play().catch(()=>{});
   $("pt").textContent = x.t; $("pa").textContent = x.a + (radio?" · Моя волна":"");
   $("pcv").style.backgroundImage = `url('${x.img}')`; $("dur").textContent = fmt(x.d);
@@ -263,16 +293,16 @@ function toggleLike(x){ favs[x.id]?delete favs[x.id]:favs[x.id]=x; ls.set("m-fav
 
 /* === События плеера === */
 au.onplay = au.onpause = () => { $("pp").textContent = au.paused?"▶":"❚❚"; $("waveBtn").textContent = radio&&!au.paused?"Пауза":"Включить волну" };
-au.ontimeupdate = () => { $("cur").textContent=fmt(au.currentTime); if(au.duration){ $("seek").value=au.currentTime/au.duration*1000; $("dur").textContent=fmt(au.duration) } };
-au.onended = () => { if(repeatMode===2){au.currentTime=0;au.play();return} step(1) };
-au.onerror = () => { if(queue.length>1) step(1) };
-$("seek").oninput = e => { if(au.duration) au.currentTime = e.target.value/1000*au.duration };
-$("pp").onclick = () => { if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
-$("next").onclick = () => step(1); $("prev").onclick = () => step(-1);
-$("plike").onclick = () => { if(cur<0) return; toggleLike(queue[cur]); $("plike").textContent=favs[queue[cur].id]?"♥":"♡"; if(view==="fav") render() };
+au.ontimeupdate = () => { if(liveRadio) return; $("cur").textContent=fmt(au.currentTime); if(au.duration){ $("seek").value=au.currentTime/au.duration*1000; $("dur").textContent=fmt(au.duration) } };
+au.onended = () => { if(liveRadio){au.play();return} if(repeatMode===2){au.currentTime=0;au.play();return} step(1) };
+au.onerror = () => { if(liveRadio){toast("⚠ Поток радио прерван");liveRadio=null;render();return} if(queue.length>1) step(1) };
+$("seek").oninput = e => { if(liveRadio) return; if(au.duration) au.currentTime = e.target.value/1000*au.duration };
+$("pp").onclick = () => { if(liveRadio){au.paused?au.play():au.pause();return} if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
+$("next").onclick = () => { if(liveRadio) return; step(1) }; $("prev").onclick = () => { if(liveRadio) return; step(-1) };
+$("plike").onclick = () => { if(cur<0||liveRadio) return; toggleLike(queue[cur]); $("plike").textContent=favs[queue[cur].id]?"♥":"♡"; if(view==="fav") render() };
 $("waveBtn").onclick = async () => {
   if(radio && cur>=0){ au.paused?au.play():au.pause(); return }
-  radio = true; try{ const pool = list.length?list:await feed(); list = pool; play(Math.floor(Math.random()*pool.length), pool) }catch{}
+  radio = true; liveRadio = null; try{ const pool = list.length?list:await feed(); list = pool; play(Math.floor(Math.random()*pool.length), pool) }catch{}
 };
 
 /* === Клик по треку / лайк === */
@@ -280,7 +310,7 @@ document.addEventListener("click", e => {
   const l = e.target.closest("[data-like]");
   if(l){ toggleLike(list[+l.dataset.like]); render(); return }
   const r = e.target.closest(".rowmain");
-  if(r){ radio=false; play(+r.dataset.i, list) }
+  if(r){ radio=false; liveRadio=null; play(+r.dataset.i, list) }
 });
 document.addEventListener("keydown", e => { if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("rowmain")){ e.preventDefault(); e.target.click() } });
 
@@ -289,14 +319,14 @@ document.querySelectorAll(".nav button").forEach(b => b.onclick = () => { view=b
 
 /* === Настроения === */
 $("moods").innerHTML = Object.keys(GENRES).map(m=>`<button class="${m===mood?"on":""}">${m}</button>`).join("");
-$("moods").onclick = e => { const b=e.target.closest("button"); if(!b) return; mood=b.textContent; radio=false; list=[]; $("moods").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); render() };
+$("moods").onclick = e => { const b=e.target.closest("button"); if(!b) return; mood=b.textContent; radio=false; liveRadio=null; list=[]; $("moods").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); render() };
 
 /* === Свайпы === */
 let touchStartX = 0;
 document.addEventListener("touchstart", e => { touchStartX = e.touches[0].clientX }, {passive:true});
 document.addEventListener("touchend", e => {
   const dx = e.changedTouches[0].clientX - touchStartX;
-  if(Math.abs(dx) > 80 && cur >= 0){ if(dx > 0) step(-1); else step(1) }
+  if(Math.abs(dx) > 80 && cur >= 0 && !liveRadio){ if(dx > 0) step(-1); else step(1) }
 });
 
 /* === Визуализатор === */
