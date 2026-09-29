@@ -15,6 +15,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#14101f;--bg2:#1e1830;--tx:#f3eeff;--mu:#9b91b8;--ac:#ff5c8a;--ln:rgba(255,255,255,.09)}
+.src-toggle{margin-left:auto;padding:6px 12px;background:var(--bg2);border:1px solid var(--ac);color:var(--ac);border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s}
+.src-toggle:active{transform:scale(.95)}
+.src-toggle.audius{background:var(--ac);color:#fff}
 @media (prefers-color-scheme:light){:root{--bg:#f6f2ff;--bg2:#ebe4fb;--tx:#1b1530;--mu:#6d6488;--ln:rgba(0,0,0,.1)}}
 *{box-sizing:border-box;margin:0}
 body{
@@ -141,12 +144,55 @@ h2{font-size:17px;margin:8px 0 10px}
 
 <nav class="nav"><div class="in">
   <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
 <script>
 /* === Jamendo API — полные треки, бесплатно и легально (Creative Commons) === */
 const JAMENDO_CLIENT_ID = "32d7ec41";
 const API = "https://api.jamendo.com/v3.0";
+
+/* === Audius API === */
+const AUDIUS_HOST = "https://discoveryprovider.audius.co";
+const AUDIUS_APP = "MusicAlwaysWithMe";
+let source = ls.get("m-source", "jamendo"); // "jamendo" | "audius"
+
+async function audiusFetch(path){
+  const r = await fetch(AUDIUS_HOST + path + (path.includes("?")?"&":"?") + "app_name=" + AUDIUS_APP);
+  if(!r.ok) throw new Error("Audius "+r.status);
+  return r.json();
+}
+
+function audiusStreamUrl(trackId){
+  return AUDIUS_HOST + "/v1/tracks/" + trackId + "/stream?app_name=" + AUDIUS_APP;
+}
+
+async function audiusTrending(genre){
+  let path = "/v1/tracks/trending?genre=" + (genre ? encodeURIComponent(genre) : "");
+  const d = await audiusFetch(path);
+  const arr = d.data || d || [];
+  return arr.map(t=>({
+    id: "au_"+t.id,
+    t: t.title,
+    a: (t.user && t.user.name) || "Unknown",
+    img: (t.artwork && (t.artwork["480x480"]||t.artwork["150x150"])) || "",
+    src: audiusStreamUrl(t.id),
+    d: Number(t.duration) || 0
+  }));
+}
+
+async function audiusSearch(query){
+  const d = await audiusFetch("/v1/tracks/search?query="+encodeURIComponent(query));
+  const arr = d.data || d || [];
+  return arr.map(t=>({
+    id: "au_"+t.id,
+    t: t.title,
+    a: (t.user && t.user.name) || "Unknown",
+    img: (t.artwork && (t.artwork["480x480"]||t.artwork["150x150"])) || "",
+    src: audiusStreamUrl(t.id),
+    d: Number(t.duration) || 0
+  }));
+}
 const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental"};
 const PER_PAGE = 20;
 const RADIOS = [
@@ -183,11 +229,18 @@ async function jamendoFetch(endpoint){
   return r.json();
 }
 async function loadChart(genre){
+  if(source === "audius"){
+    const g = genre === "pop" ? "pop" : genre === "hiphop" ? "hip-hop" : genre === "rock" ? "rock" : genre === "electronic" ? "electronic" : "";
+    return audiusTrending(g);
+  }
   const tag = genre ? `&fuzzytags=${encodeURIComponent(genre)}` : "";
   const data = await jamendoFetch("tracks/?limit=50&order=popularity_total"+tag);
   return (data.results||[]).map(t=>({id:String(t.id),t:t.name,a:t.artist_name,img:t.image,src:t.audio,d:Number(t.duration)}));
 }
 async function loadSearch(query){
+  if(source === "audius"){
+    return audiusSearch(query);
+  }
   const data = await jamendoFetch("tracks/?limit=50&search="+encodeURIComponent(query));
   return (data.results||[]).map(t=>({id:String(t.id),t:t.name,a:t.artist_name,img:t.image,src:t.audio,d:Number(t.duration)}));
 }
@@ -282,6 +335,29 @@ function applySkyTheme(){
 applySkyTheme();
 // Update every 5 minutes in case user keeps app open
 setInterval(applySkyTheme, 5*60*1000);
+
+/* === Source toggle handler === */
+function updateSrcToggle(){
+  const btn = $("srcToggle");
+  if(!btn) return;
+  if(source === "audius"){
+    btn.textContent = "🎵 Audius";
+    btn.classList.add("audius");
+  } else {
+    btn.textContent = "🎵 Jamendo";
+    btn.classList.remove("audius");
+  }
+}
+updateSrcToggle();
+$("srcToggle") && $("srcToggle").addEventListener("click", () => {
+  source = source === "jamendo" ? "audius" : "jamendo";
+  ls.set("m-source", source);
+  updateSrcToggle();
+  // Reload current view
+  if(view === "home") feed();
+  else if(view === "search") { const q = $("q").value.trim(); if(q) loadSearch(q).then(l => { list = l; page = 0; render(); }); }
+  toast(source === "audius" ? "🎵 Источник: Audius" : "🎵 Источник: Jamendo");
+});
 
 render(); toast("⏹ Радио остановлено"); return }
       liveRadio = rid; radio = false; cur = -1; queue = [];
