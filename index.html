@@ -586,7 +586,7 @@ $("srcToggle") && $("srcToggle").addEventListener("click", () => {
 });
 
 
-/* === Android Download & Install === */
+/* === Android Download === */
 let androidDeferredPrompt;
 window.addEventListener("beforeinstallprompt", e => { 
   e.preventDefault(); 
@@ -651,7 +651,7 @@ if(/Android/i.test(navigator.userAgent)){
 render();
 </script>
 
-<!-- Android Download Section -->
+<!-- Android Download -->
 <div class="android-download" id="androidDownload" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:16px 24px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.3);z-index:9999;max-width:90%;text-align:center;">
   <div style="font-size:18px;font-weight:600;margin-bottom:8px;">📱 Скачать для Android</div>
   <div style="font-size:13px;opacity:0.9;margin-bottom:12px;">Установите как приложение через браузер</div>
