@@ -1,37 +1,30 @@
 {
   "name": "Музыка всегда с собой",
   "short_name": "Музыка",
-  "description": "Музыкальный плеер — легальная музыка независимых артистов, офлайн и PWA",
+  "description": "Музыкальный плеер с татарско-башкирской музыкой, шансоном, Цоем и радио",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#14101f",
-  "theme_color": "#ff5c8a",
-  "orientation": "portrait-primary",
-  "lang": "ru",
+  "background_color": "#1a1a2e",
+  "theme_color": "#667eea",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%23ff5c8a'/><text x='256' y='380' font-size='300' text-anchor='middle' fill='white'>♪</text></svg>",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "shortcuts": [
-    {
-      "name": "Моя волна",
-      "url": "/?wave=1",
-      "description": "Включить случайную музыку"
-    },
-    {
-      "name": "Поиск",
-      "url": "/?view=search",
-      "description": "Найти трек или артиста"
-    },
-    {
-      "name": "Любимое",
-      "url": "/?view=fav",
-      "description": "Ваши сохранённые треки"
-    }
+  "categories": [
+    "music",
+    "entertainment"
   ],
-  "categories": ["music", "entertainment"]
+  "lang": "ru",
+  "dir": "ltr"
 }
