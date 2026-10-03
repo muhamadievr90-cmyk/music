@@ -23,7 +23,9 @@
 body{
   background:
     var(--pat, repeating-conic-gradient(from 0deg at 50% 35%, transparent 0deg, transparent 6deg, rgba(0,0,0,0.28) 6deg, rgba(0,0,0,0.28) 9deg)),
-    radial-gradient(120% 90% at 50% 35%, var(--bg2), var(--bg));
+    linear-gradient(color-mix(in srgb,var(--bg) 58%,transparent), color-mix(in srgb,var(--bg2) 74%,transparent)),
+    url(bg.jpg) center/cover no-repeat,
+    var(--bg);
   background-attachment: fixed;
   color:var(--tx);
   font:400 15px/1.45 Manrope,system-ui,sans-serif;
