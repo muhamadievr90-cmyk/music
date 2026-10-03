@@ -22,8 +22,7 @@
 *{box-sizing:border-box;margin:0}
 body{
   background:
-    radial-gradient(circle at 50% 35%, transparent 0, transparent 80px, rgba(0,0,0,0) 81px),
-    repeating-conic-gradient(from 0deg at 50% 35%, transparent 0deg, transparent 6deg, rgba(0,0,0,0.28) 6deg, rgba(0,0,0,0.28) 9deg),
+    var(--pat, repeating-conic-gradient(from 0deg at 50% 35%, transparent 0deg, transparent 6deg, rgba(0,0,0,0.28) 6deg, rgba(0,0,0,0.28) 9deg)),
     radial-gradient(120% 90% at 50% 35%, var(--bg2), var(--bg));
   background-attachment: fixed;
   color:var(--tx);
@@ -719,58 +718,38 @@ if("serviceWorker" in navigator){
 
 /* === Dynamic sky theme + Source toggle === */
 /* === Dynamic sky theme based on time of day === */
+/* === Тема дня: цвета и узор фона меняются каждый день === */
+const PATTERNS = [
+  ov => `repeating-conic-gradient(from 0deg at 50% 35%, transparent 0deg 6deg, ${ov} 6deg 9deg)`,
+  ov => `radial-gradient(circle, ${ov} 2px, transparent 2.5px) 0 0/26px 26px`,
+  ov => `repeating-linear-gradient(45deg, transparent 0 18px, ${ov} 18px 36px)`,
+  ov => `repeating-radial-gradient(circle at 50% 35%, transparent 0 44px, ${ov} 44px 88px)`,
+  ov => `linear-gradient(${ov} 1px, transparent 1px) 0 0/32px 32px, linear-gradient(90deg, ${ov} 1px, transparent 1px) 0 0/32px 32px`,
+  ov => `repeating-linear-gradient(-30deg, transparent 0 14px, ${ov} 14px 16px)`
+];
 function applySkyTheme(){
-  const h = new Date().getHours();
-  let theme;
-  if(h>=5 && h<11){
-    // Morning: рассвет с солнцем — soft pink-orange sunrise
-    theme = {
-      skyTop:'#ff9e7d', skyBottom:'#ffd29e',
-      sunColor:'#ff6b35', sunGlow:'rgba(255,150,80,0.6)',
-      stripeColor:'rgba(255,200,150,0.4)',
-      bg:'#ff9e7d', bg2:'#ffd29e', tx:'#3a1a0a', mu:'#6a3a1a',
-      ac:'#ff5c8a', ln:'rgba(80,40,20,0.15)'
-    };
-  } else if(h>=11 && h<17){
-    // Day: просто солнышко — bright blue sky with yellow sun
-    theme = {
-      skyTop:'#4a9fff', skyBottom:'#a3d5ff',
-      sunColor:'#ffeb3b', sunGlow:'rgba(255,235,59,0.7)',
-      stripeColor:'rgba(255,255,255,0.3)',
-      bg:'#4a9fff', bg2:'#a3d5ff', tx:'#0a1a3a', mu:'#2a4a7a',
-      ac:'#ff5c8a', ln:'rgba(255,255,255,0.2)'
-    };
-  } else if(h>=17 && h<21){
-    // Evening: закат — deep orange-red sunset
-    theme = {
-      skyTop:'#c43e3e', skyBottom:'#ff7e5f',
-      sunColor:'#ff3c1f', sunGlow:'rgba(255,80,40,0.7)',
-      stripeColor:'rgba(80,15,25,0.6)',
-      bg:'#c43e3e', bg2:'#ff7e5f', tx:'#fff0e8', mu:'#ffd0c0',
-      ac:'#ff5c8a', ln:'rgba(255,255,255,0.12)'
-    };
-  } else {
-    // Night: тёмная ночь с луной — dark night with moon
-    theme = {
-      skyTop:'#0a0a1f', skyBottom:'#1a1a3a',
-      sunColor:'#e8e8ff', sunGlow:'rgba(200,200,255,0.4)',
-      stripeColor:'rgba(80,80,140,0.4)',
-      bg:'#0a0a1f', bg2:'#1a1a3a', tx:'#e8e8ff', mu:'#8888bb',
-      ac:'#7c8cff', ln:'rgba(255,255,255,0.08)'
-    };
-  }
+  const now = new Date();
+  // номер дня по местному календарю → разные оттенок, насыщенность и узор каждый день
+  const day = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()/86400000 - now.getTimezoneOffset()/1440);
+  const hue = Math.round((day*137.508) % 360);
+  const hue2 = (hue + 140 + (day%3)*30) % 360;
+  const sat = 45 + (day%4)*10;
+  const h = now.getHours();
+  const dark = h < 6 || h >= 18;
+  const t = dark
+    ? { bg:`hsl(${hue} ${sat}% 9%)`, bg2:`hsl(${hue} ${sat}% 17%)`, tx:`hsl(${hue} 40% 94%)`, mu:`hsl(${hue} 25% 70%)`, ln:'rgba(255,255,255,.09)', ov:'rgba(255,255,255,.06)' }
+    : { bg:`hsl(${hue} ${sat+15}% 80%)`, bg2:`hsl(${hue} ${sat+15}% 90%)`, tx:`hsl(${hue} 50% 11%)`, mu:`hsl(${hue} 30% 30%)`, ln:'rgba(0,0,0,.12)', ov:'rgba(0,0,0,.07)' };
+  const ac = `hsl(${hue2} 80% ${dark?60:44}%)`;
   const r = document.documentElement.style;
-  r.setProperty('--bg', theme.bg);
-  r.setProperty('--bg2', theme.bg2);
-  r.setProperty('--tx', theme.tx);
-  r.setProperty('--mu', theme.mu);
-  r.setProperty('--ac', theme.ac);
-  r.setProperty('--ln', theme.ln);
-  r.setProperty('--sun-color', theme.sunColor);
-  r.setProperty('--sun-glow', theme.sunGlow);
-  r.setProperty('--stripe-color', theme.stripeColor);
-  r.setProperty('--sky-top', theme.skyTop);
-  r.setProperty('--sky-bottom', theme.skyBottom);
+  r.setProperty('--bg', t.bg); r.setProperty('--bg2', t.bg2);
+  r.setProperty('--tx', t.tx); r.setProperty('--mu', t.mu);
+  r.setProperty('--ac', ac); r.setProperty('--ln', t.ln);
+  r.setProperty('--pat', PATTERNS[day % PATTERNS.length](t.ov));
+  r.setProperty('--sun-color', ac);
+  r.setProperty('--sun-glow', `hsl(${hue2} 90% 60% / .5)`);
+  r.setProperty('--stripe-color', t.ov);
+  r.setProperty('--sky-top', t.bg); r.setProperty('--sky-bottom', t.bg2);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.content = t.bg);
 }
 applySkyTheme();
 setInterval(applySkyTheme, 5*60*1000);

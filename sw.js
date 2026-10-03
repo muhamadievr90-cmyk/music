@@ -1,5 +1,5 @@
 // Service Worker: Музыка всегда с собой
-const CACHE = "music-v29";
+const CACHE = "music-v30";
 const STATIC = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 const INDEX = new URL("index.html", self.registration.scope).href;
 const API_CACHE = "music-api-v1";
