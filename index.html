@@ -228,13 +228,19 @@ const TSOI_QUERIES = [
   "ДДТ", "Аквариум", "Наутилус Помпилиус", "Алиса", "Ария", "Сплин", "Би-2", "Мумий Тролль"
 ];
 
+async function jamendoSearchFull(query){
+  const data = await jamendoFetch("tracks/?limit=20&search="+encodeURIComponent(query));
+  return (data.results||[]).filter(t=>t.audio).map(t=>({id:String(t.id),t:t.name,a:t.artist_name,img:t.image,src:t.audio,d:Number(t.duration)}));
+}
 async function loadCurated(queries){
-  const all = await Promise.all(queries.map(q => itunesSearch(q).catch(() => [])));
+  // full tracks first (Jamendo + Audius), 30-sec iTunes previews only as fallback at the end
+  const full = await Promise.all(queries.map(q => Promise.all([jamendoSearchFull(q).catch(()=>[]), audiusSearch(q).catch(()=>[])]).then(r=>r.flat())));
+  const prev = await Promise.all(queries.map(q => itunesSearch(q).catch(() => [])));
   const seen = new Set(), combined = [];
-  for(const l of all) for(const t of l){
+  for(const l of [...full, ...prev]) for(const t of l){
     if(!seen.has(t.id)){ seen.add(t.id); combined.push(t) }
   }
-  return combined.slice(0,150);
+  return combined.slice(0,200);
 }
 const loadTatarBashkir = () => loadCurated(TB_QUERIES);
 const loadChanson = () => loadCurated(CHANSON_QUERIES);
@@ -333,7 +339,7 @@ async function render(){
     v.innerHTML = '<input class="sr" id="q" type="search" placeholder="Трек, исполнитель, жанр" autocomplete="off"><div id="res"><p class="empty">Начните вводить название или имя артиста.</p></div>';
     let t; $("q").oninput = e => { clearTimeout(t); const s=e.target.value.trim(); t=setTimeout(async()=>{ if(!s) return; $("res").innerHTML=skeletons(4); try{ allTracks=await loadSearch(s); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager(); if(!hist.includes(s)){hist.unshift(s);if(hist.length>30)hist.pop();ls.set("m-hist",hist)} }catch(err){ $("res").innerHTML='<p class="empty">Ошибка поиска: '+esc(err.message)+'</p>' } },350) };
   } else if(view==="tb"){
-    v.innerHTML = '<h2>🎵 Татарско-башкирская музыка</h2><p class="sub">Коммерческие треки (30-сек превью) из iTunes</p><div id="res">'+skeletons(6)+'</div>';
+    v.innerHTML = '<h2>🎵 Татарско-башкирская музыка</h2><p class="sub">Полные треки из Jamendo/Audius, затем 30-сек превью из iTunes</p><div id="res">'+skeletons(6)+'</div>';
     loadTatarBashkir().then(tracks => {
       allTracks = tracks; totalLoaded = tracks.length; page = 0;
       list = paginatedList(allTracks, page);
@@ -343,7 +349,7 @@ async function render(){
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
   } else if(view==="ch"){
-    v.innerHTML = '<h2>🎤 Русский шансон</h2><p class="sub">Шуфутинский, Лепс, Михайлов, Бутырка и др. (30-сек превью)</p><div id="res">'+skeletons(6)+'</div>';
+    v.innerHTML = '<h2>🎤 Русский шансон</h2><p class="sub">Полные треки (Jamendo/Audius), затем 30-сек превью</p><div id="res">'+skeletons(6)+'</div>';
     loadChanson().then(tracks => {
       allTracks = tracks; totalLoaded = tracks.length; page = 0;
       list = paginatedList(allTracks, page);
@@ -353,7 +359,7 @@ async function render(){
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
   } else if(view==="tsoi"){
-    v.innerHTML = '<h2>🎸 Виктор Цой / Кино</h2><p class="sub">Легенды русского рока (30-сек превью из iTunes)</p><div id="res">'+skeletons(6)+'</div>';
+    v.innerHTML = '<h2>🎸 Виктор Цой / Кино</h2><p class="sub">Полные треки (Jamendo/Audius), затем 30-сек превью из iTunes</p><div id="res">'+skeletons(6)+'</div>';
     loadTsoi().then(tracks => {
       allTracks = tracks; totalLoaded = tracks.length; page = 0;
       list = paginatedList(allTracks, page);
@@ -393,7 +399,7 @@ function pagerHTML(){
   if(totalLoaded<=PER_PAGE) return "";
   const pages = Math.ceil(totalLoaded/PER_PAGE);
   let h = '<div class="pager">';
-  for(let i=0;i<pages&&i<8;i++) h += `<button class="${i===page?"on":""}" data-p="${i}">${i+1}</button>`;
+  for(let i=0;i<pages&&i<10;i++) h += `<button class="${i===page?"on":""}" data-p="${i}">${i+1}</button>`;
   h += '</div>';
   return h;
 }
