@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [index.html, manifest.json, sw.js, icon-*.png, .github/workflows/android.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      SITE_URL: https://muhamadievr90-cmyk.github.io/music/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Create Capacitor project that wraps the site
+        run: |
+          mkdir app && cd app
+          npm init -y >/dev/null
+          npm i @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
+          mkdir www assets
+          cp ../index.html www/index.html
+          cp ../icon-512.png assets/icon-only.png
+          cat > capacitor.config.json <<EOF
+          {
+            "appId": "com.muhamadievr90.music",
+            "appName": "Музыка",
+            "webDir": "www",
+            "server": { "url": "${SITE_URL}", "androidScheme": "https" },
+            "android": { "allowMixedContent": true }
+          }
+          EOF
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#a64ee0' || true
+      - name: Build debug APK
+        run: |
+          cd app/android
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../../music.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: music-apk, path: music.apk }
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Android APK (последняя версия)
+          body: Скачайте music.apk на телефон и установите (разрешите установку из неизвестных источников).
+          files: music.apk

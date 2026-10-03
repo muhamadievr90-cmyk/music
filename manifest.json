@@ -2,7 +2,7 @@
   "name": "Музыка всегда с собой",
   "short_name": "Музыка",
   "description": "Музыкальный плеер с татарско-башкирской музыкой, шансоном, Цоем и радио",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#667eea",
@@ -12,13 +12,25 @@
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": [
@@ -26,5 +38,7 @@
     "entertainment"
   ],
   "lang": "ru",
-  "dir": "ltr"
+  "dir": "ltr",
+  "id": "./",
+  "scope": "./"
 }
