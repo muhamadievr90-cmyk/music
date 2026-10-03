@@ -61,8 +61,8 @@ h2{font-size:17px;margin:8px 0 10px}
 .card{background:var(--bg2);border-radius:24px;padding:22px;margin:24px 0}
 .card a{color:var(--ac)}
 .nav{position:fixed;left:0;right:0;bottom:0;padding-bottom:env(safe-area-inset-bottom);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);border-top:1px solid var(--ln);z-index:5}
-.nav .in{max-width:720px;margin:0 auto;display:flex}
-.nav button{flex:1;padding:11px 0 8px;color:var(--mu);font-weight:600;font-size:12px}
+.nav .in{max-width:720px;margin:0 auto;display:flex;overflow-x:auto}
+.nav button{flex:1 0 auto;white-space:nowrap;padding:11px 8px 8px;color:var(--mu);font-weight:600;font-size:12px}
 .nav button.on{color:var(--tx)}
 .nav button::after{content:"";display:block;width:18px;height:3px;border-radius:3px;margin:4px auto 0}
 .nav button.on::after{background:var(--ac)}
@@ -143,7 +143,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="sp">🟢 Spotify</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
   <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
@@ -236,8 +236,9 @@ async function loadCurated(queries){
   // full tracks first (Jamendo + Audius), 30-sec iTunes previews only as fallback at the end
   const full = await Promise.all(queries.map(q => Promise.all([jamendoSearchFull(q).catch(()=>[]), audiusSearch(q).catch(()=>[])]).then(r=>r.flat())));
   const prev = await Promise.all(queries.map(q => itunesSearch(q).catch(() => [])));
+  const sp = spLoggedIn() ? await Promise.all(queries.map(q => spSearch(q,8).catch(() => []))) : [];
   const seen = new Set(), combined = [];
-  for(const l of [...full, ...prev]) for(const t of l){
+  for(const l of [...sp, ...full, ...prev]) for(const t of l){
     if(!seen.has(t.id)){ seen.add(t.id); combined.push(t) }
   }
   return combined.slice(0,200);
@@ -368,6 +369,16 @@ async function render(){
     }).catch(err => {
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
+  } else if(view==="sp"){
+    if(!spLoggedIn()){
+      v.innerHTML = '<h2>🟢 Spotify</h2><p class="sub">Полные версии треков. Нужен аккаунт Spotify Premium.</p><button class="mode-btn on" id="spLogin" style="padding:12px 20px;font-size:15px">Войти через Spotify</button>';
+      $("spLogin").onclick = spLogin;
+    } else {
+      spInitPlayer();
+      v.innerHTML = '<h2>🟢 Spotify</h2><input class="sr" id="q" type="search" placeholder="Трек или исполнитель" autocomplete="off"><div id="res"><p class="empty">Введите запрос — треки будут играть целиком.</p></div><p style="text-align:center;margin-top:16px"><a href="#" id="spOut" style="color:var(--mu);font-size:13px">Выйти из Spotify</a></p>';
+      $("spOut").onclick = e => { e.preventDefault(); spLogout() };
+      let t; $("q").oninput = e => { clearTimeout(t); const q=e.target.value.trim(); t=setTimeout(async()=>{ if(!q) return; $("res").innerHTML=skeletons(4); try{ allTracks=await spSearch(q); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager() }catch(err){ $("res").innerHTML='<p class="empty">Ошибка: '+esc(err.message)+'</p>' } },350) };
+    }
   } else if(view==="radio"){
     v.innerHTML = '<h2>📻 Радио</h2><div class="radio-grid">'+RADIOS.map(r=>`<div class="radio-card${liveRadio===r.id?" playing":""}" data-radio="${r.id}"><div class="ricon">${r.icon||"📻"}</div><div class="rname">${esc(r.name)}${liveRadio===r.id?'<span class="radio-live">LIVE</span>':''}</div><div class="rdesc">${esc(r.desc)}</div></div>`).join("")+'</div><p style="color:var(--mu);font-size:13px;margin-top:12px;text-align:center">Нажмите на станцию — радио начнёт играть</p>';
     v.querySelectorAll(".radio-card").forEach(c => c.onclick = () => {
@@ -375,7 +386,7 @@ async function render(){
       const r = RADIOS.find(x=>x.id===rid);
       if(!r) return;
       if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; render(); toast("⏹ Радио остановлено"); return }
-      liveRadio = rid; radio = false; cur = -1; queue = [];
+      spStop(); liveRadio = rid; radio = false; cur = -1; queue = [];
       au.src = r.src; au.play().catch(()=>{});
       $("pt").textContent = r.name; $("pa").textContent = "LIVE · "+r.desc;
       $("pcv").style.backgroundImage = ""; $("dur").textContent = "LIVE";
@@ -407,12 +418,116 @@ function bindPager(){
   document.querySelectorAll(".pager button").forEach(b => b.onclick = () => { page=+b.dataset.p; list=paginatedList(allTracks,page); const v=$("view"); const existing=v.querySelector("h2"); v.innerHTML=""; if(existing)v.prepend(existing); v.innerHTML+=rows(list)+pagerHTML(); bindPager(); scrollTo(0,0) });
 }
 
+/* === Spotify (полные треки, нужен Premium) === */
+const SP_SCOPES = "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state";
+const spRedirect = () => location.origin + location.pathname;
+const spId = () => ls.get("sp-id","");
+const spLoggedIn = () => !!ls.get("sp-tok",null);
+let spPlayer = null, spDevice = null, spActive = false, spState = null, spStateAt = 0, spEndedFor = null;
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+async function spLogin(){
+  let id = spId();
+  if(!id){
+    id = (prompt("Вставьте Spotify Client ID (developer.spotify.com/dashboard).\nВ настройках приложения добавьте Redirect URI:\n"+spRedirect())||"").trim();
+    if(!id) return;
+    ls.set("sp-id",id);
+  }
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  ls.set("sp-ver", verifier);
+  location.href = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+    client_id:id, response_type:"code", redirect_uri:spRedirect(), scope:SP_SCOPES,
+    code_challenge_method:"S256", code_challenge:challenge
+  });
+}
+function spLogout(){
+  ls.set("sp-tok",null);
+  if(spPlayer){ spPlayer.disconnect(); spPlayer=null; spDevice=null }
+  spActive = false; render();
+}
+async function spTokenRequest(params){
+  const r = await fetch("https://accounts.spotify.com/api/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:spId(),...params})});
+  if(!r.ok) throw new Error("Spotify auth "+r.status);
+  const d = await r.json();
+  const old = ls.get("sp-tok",{});
+  ls.set("sp-tok",{access:d.access_token,refresh:d.refresh_token||old.refresh,exp:Date.now()+d.expires_in*1000});
+}
+async function spHandleRedirect(){
+  const p = new URLSearchParams(location.search);
+  if(!p.get("code")) return;
+  const code = p.get("code");
+  history.replaceState(null,"",location.pathname);
+  view = "sp";
+  try{ await spTokenRequest({grant_type:"authorization_code",code,redirect_uri:spRedirect(),code_verifier:ls.get("sp-ver","")}); toast("Spotify подключён") }
+  catch(e){ toast("⚠ "+e.message) }
+}
+async function spToken(){
+  const t = ls.get("sp-tok",null);
+  if(!t) throw new Error("Spotify: нужен вход");
+  if(Date.now() < t.exp-60000) return t.access;
+  await spTokenRequest({grant_type:"refresh_token",refresh_token:t.refresh});
+  return ls.get("sp-tok").access;
+}
+async function spApi(path,opts={}){
+  const r = await fetch("https://api.spotify.com/v1"+path,{...opts,headers:{Authorization:"Bearer "+await spToken(),"Content-Type":"application/json"}});
+  if(r.status===401 && !opts._retry){ const t=ls.get("sp-tok"); t.exp=0; ls.set("sp-tok",t); return spApi(path,{...opts,_retry:1}) }
+  if(!r.ok && r.status!==204) throw new Error("Spotify "+r.status);
+  return r.status===204 ? null : r.json();
+}
+async function spSearch(query,limit=50){
+  const d = await spApi("/search?type=track&limit="+limit+"&q="+encodeURIComponent(query));
+  return ((d.tracks&&d.tracks.items)||[]).map(t=>({
+    id:"sp_"+t.id, uri:t.uri, t:t.name, a:t.artists.map(x=>x.name).join(", "),
+    img:(t.album.images[1]||t.album.images[0]||{}).url||"", src:"", d:t.duration_ms/1000
+  }));
+}
+function spInitPlayer(){
+  if(!spLoggedIn() || spPlayer || window.__spLoading) return;
+  window.__spLoading = true;
+  window.onSpotifyWebPlaybackSDKReady = () => {
+    spPlayer = new Spotify.Player({name:"Музыка всегда с собой", getOAuthToken:cb=>spToken().then(cb).catch(()=>{}), volume:au.volume});
+    spPlayer.addListener("ready", ({device_id}) => { spDevice = device_id });
+    spPlayer.addListener("not_ready", () => { spDevice = null });
+    spPlayer.addListener("account_error", () => toast("⚠ Для Spotify нужен Premium"));
+    spPlayer.addListener("authentication_error", () => toast("⚠ Ошибка входа в Spotify"));
+    spPlayer.addListener("player_state_changed", st => {
+      if(!st || !spActive) return;
+      spState = st; spStateAt = Date.now();
+      $("pp").textContent = st.paused?"▶":"❚❚";
+      $("dur").textContent = fmt(st.duration/1000);
+      const id = st.track_window.current_track.id;
+      const finished = st.paused && st.position===0 && st.track_window.previous_tracks.some(t=>t.id===id);
+      if(finished && spEndedFor!==id){ spEndedFor = id; step(1) }
+    });
+    spPlayer.connect();
+  };
+  const sc = document.createElement("script");
+  sc.src = "https://sdk.scdn.co/spotify-player.js"; sc.async = true;
+  document.head.appendChild(sc);
+}
+setInterval(() => {
+  if(!spActive || !spState || spState.paused) return;
+  const pos = spState.position + (Date.now()-spStateAt);
+  $("cur").textContent = fmt(pos/1000);
+  $("seek").value = Math.min(1000, pos/spState.duration*1000);
+}, 500);
+async function spPlay(x){
+  try{
+    spEndedFor = null;
+    await spApi("/me/player/play?device_id="+spDevice,{method:"PUT",body:JSON.stringify({uris:[x.uri]})});
+  }catch(e){ toast("⚠ "+e.message); }
+}
+function spStop(){ if(spActive && spPlayer){ spPlayer.pause() } spActive = false }
+
 /* === Воспроизведение === */
 function play(i, from){
   if(from) queue = from;
   cur = i; const x = queue[cur];
   liveRadio = null;
-  au.src = x.src; au.play().catch(()=>{});
+  if(x.uri){
+    if(!spDevice){ toast("Spotify ещё подключается, попробуйте через секунду"); return }
+    au.pause(); spActive = true; spPlay(x);
+  } else { spStop(); au.src = x.src; au.play().catch(()=>{}); }
   $("pt").textContent = x.t; $("pa").textContent = x.a + (radio?" · Моя волна":"");
   $("pcv").style.backgroundImage = `url('${x.img}')`; $("dur").textContent = fmt(x.d);
   $("plike").textContent = favs[x.id]?"♥":"♡";
@@ -424,7 +539,7 @@ function play(i, from){
 }
 function step(d){
   if(!queue.length) return;
-  if(repeatMode===2){ au.currentTime=0; au.play(); return }
+  if(repeatMode===2){ if(spActive){ spEndedFor=null; spPlayer.seek(0); spPlayer.resume() } else { au.currentTime=0; au.play() } return }
   let next;
   if(shuffleOn){ next=Math.floor(Math.random()*queue.length) }
   else { next = radio ? Math.floor(Math.random()*queue.length) : (cur+d+queue.length)%queue.length }
@@ -437,8 +552,8 @@ au.onplay = au.onpause = () => { $("pp").textContent = au.paused?"▶":"❚❚";
 au.ontimeupdate = () => { if(liveRadio) return; $("cur").textContent=fmt(au.currentTime); if(au.duration){ $("seek").value=au.currentTime/au.duration*1000; $("dur").textContent=fmt(au.duration) } };
 au.onended = () => { if(liveRadio){au.play();return} if(repeatMode===2){au.currentTime=0;au.play();return} step(1) };
 au.onerror = () => { if(liveRadio){toast("⚠ Поток радио прерван");liveRadio=null;render();return} if(queue.length>1) step(1) };
-$("seek").oninput = e => { if(liveRadio) return; if(au.duration) au.currentTime = e.target.value/1000*au.duration };
-$("pp").onclick = () => { if(liveRadio){au.paused?au.play():au.pause();return} if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
+$("seek").oninput = e => { if(spActive && spState){ spPlayer.seek(e.target.value/1000*spState.duration); return } if(liveRadio) return; if(au.duration) au.currentTime = e.target.value/1000*au.duration };
+$("pp").onclick = () => { if(spActive && !liveRadio){ spPlayer.togglePlay(); return } if(liveRadio){au.paused?au.play():au.pause();return} if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
 $("next").onclick = () => { if(liveRadio) return; step(1) }; $("prev").onclick = () => { if(liveRadio) return; step(-1) };
 $("plike").onclick = () => { if(cur<0||liveRadio) return; toggleLike(queue[cur]); $("plike").textContent=favs[queue[cur].id]?"♥":"♡"; if(view==="fav") render() };
 $("waveBtn").onclick = async () => {
@@ -669,7 +784,7 @@ if(/Android/i.test(navigator.userAgent)){
   }, 1000);
 }
 
-render();
+spHandleRedirect().then(() => { if(view==="sp"){ document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("on",x.dataset.v==="sp")) } render(); spInitPlayer() });
 </script>
 
 <!-- Android Download -->
