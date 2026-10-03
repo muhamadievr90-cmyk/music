@@ -104,6 +104,39 @@ h2{font-size:17px;margin:8px 0 10px}
 .radio-card .rdesc{color:var(--mu);font-size:12px}
 .radio-live{display:inline-block;background:var(--ac);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px;animation:pulse-live 1.5s infinite}
 @keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.5}}
+/* === Polish === */
+:root{--ac2:#7a4dff;--grad:linear-gradient(120deg,var(--ac),var(--ac2));--glass:color-mix(in srgb,var(--bg2) 70%,transparent)}
+.hero{background:radial-gradient(90% 70% at 50% 0%,color-mix(in srgb,var(--ac2) 28%,var(--bg2)),var(--bg));box-shadow:0 30px 60px -30px rgba(122,77,255,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+.hero h1{font-size:30px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.wave{background:var(--grad);box-shadow:0 12px 32px -8px var(--ac);transition:transform .2s,box-shadow .2s}
+.wave:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 38px -8px var(--ac)}
+.wave:active{transform:scale(.97)}
+.moods{scrollbar-width:none}.moods::-webkit-scrollbar{display:none}
+.moods button{background:var(--glass);transition:all .2s}
+.moods button:hover{border-color:var(--ac);color:var(--tx)}
+.moods button.on{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 6px 18px -6px var(--ac)}
+h2{font-size:19px;margin:14px 0 12px}
+.row{transition:background .2s,transform .15s}
+.row:hover{transform:translateX(3px)}
+.row.cur{background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 22%,transparent),transparent);box-shadow:inset 3px 0 0 var(--ac)}
+.cv{box-shadow:0 6px 16px -6px rgba(0,0,0,.6);transition:transform .2s}
+.row:hover .cv{transform:scale(1.06) rotate(-2deg)}
+.hb{transition:transform .2s,color .2s}.hb:hover{transform:scale(1.2)}.hb.on{filter:drop-shadow(0 0 6px var(--ac))}
+.sr{background:var(--glass);backdrop-filter:blur(10px);transition:border-color .2s,box-shadow .2s}
+.sr:focus{outline:0;border-color:var(--ac);box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 25%,transparent)}
+.card{border:1px solid var(--ln);background:var(--glass);backdrop-filter:blur(10px)}
+.nav{backdrop-filter:blur(20px) saturate(1.4)}
+.nav button{transition:color .2s}.nav button.on::after{width:26px;background:var(--grad);box-shadow:0 0 10px var(--ac)}
+.pl{background:linear-gradient(120deg,#ff5c8a,#7a4dff 70%,#4d7aff);border:1px solid rgba(255,255,255,.18);box-shadow:0 20px 50px -12px rgba(122,77,255,.6)}
+.ct .pp{box-shadow:0 6px 18px rgba(0,0,0,.3);transition:transform .15s}.ct .pp:hover{transform:scale(1.08)}
+.favbtn{background:var(--grad);color:#fff;padding:10px 18px;box-shadow:0 8px 20px -8px var(--ac);transition:transform .2s}
+.favbtn:hover{transform:translateY(-2px)}
+.favbtn+.favbtn{background:var(--glass);border:1px solid var(--ln);color:var(--tx);box-shadow:none}
+.radio-card{background:var(--glass);border:1px solid var(--ln)}
+.radio-card.playing{border-color:var(--ac)}
+.pager button.on{background:var(--grad);border-color:transparent}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--ln);border-radius:8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
