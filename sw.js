@@ -1,6 +1,6 @@
 // Service Worker: Музыка всегда с собой
-const CACHE = "music-v28";
-const STATIC = ["/", "/index.html", "/manifest.json"];
+const CACHE = "music-v29";
+const STATIC = ["./", "index.html", "manifest.json", "icon-192.png", "icon-512.png"];
 const API_CACHE = "music-api-v1";
 const AUDIO_CACHE = "music-audio-v1";
 
@@ -69,7 +69,7 @@ self.addEventListener("fetch", e => {
         const clone = r.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
         return r;
-      }).catch(() => caches.match(e.request).then(c => c || caches.match("/index.html")))
+      }).catch(() => caches.match(e.request).then(c => c || caches.match("index.html")))
     );
     return;
   }
@@ -86,7 +86,7 @@ self.addEventListener("fetch", e => {
         return r;
       }).catch(() => {
         if (e.request.mode === "navigate") {
-          return caches.match("/index.html");
+          return caches.match("index.html");
         }
       });
     })
