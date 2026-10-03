@@ -67,6 +67,8 @@ h2{font-size:17px;margin:8px 0 10px}
 .nav button::after{content:"";display:block;width:18px;height:3px;border-radius:3px;margin:4px auto 0}
 .nav button.on::after{background:var(--ac)}
 .pl{position:fixed;left:10px;right:10px;bottom:calc(58px + env(safe-area-inset-bottom));max-width:700px;margin:0 auto;z-index:6;border-radius:24px;padding:12px 14px 10px;color:#fff;background:linear-gradient(120deg,#ff5c8a,#7a4dff);box-shadow:0 18px 40px -12px rgba(0,0,0,.55)}
+#ytbox{position:fixed;top:12px;right:10px;width:200px;height:113px;z-index:7;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4);background:#000;display:none}
+#ytbox.on{display:block}
 .pl .t{display:flex;align-items:center;gap:12px}
 .pl .cv{width:46px;height:46px}.pl .m span{color:rgba(255,255,255,.8)}
 .ct{display:flex;align-items:center}.ct button{font-size:20px;padding:8px 9px}
@@ -112,6 +114,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="ytbox"><div id="ytp"></div></div>
 
 <div class="wrap">
   <section class="hero" id="hero">
@@ -143,7 +146,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="sp">🟢 Spotify</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="yt">▶ YouTube</button><button data-v="sp">🟢 Spotify</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
   <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
@@ -236,9 +239,10 @@ async function loadCurated(queries){
   // full tracks first (Jamendo + Audius), 30-sec iTunes previews only as fallback at the end
   const full = await Promise.all(queries.map(q => Promise.all([jamendoSearchFull(q).catch(()=>[]), audiusSearch(q).catch(()=>[])]).then(r=>r.flat())));
   const prev = await Promise.all(queries.map(q => itunesSearch(q).catch(() => [])));
+  const yt = ytKey() ? await Promise.all(queries.slice(0,6).map(q => ytSearch(q,10).catch(() => []))) : [];
   const sp = spLoggedIn() ? await Promise.all(queries.map(q => spSearch(q,8).catch(() => []))) : [];
   const seen = new Set(), combined = [];
-  for(const l of [...sp, ...full, ...prev]) for(const t of l){
+  for(const l of [...sp, ...yt, ...full, ...prev]) for(const t of l){
     if(!seen.has(t.id)){ seen.add(t.id); combined.push(t) }
   }
   return combined.slice(0,200);
@@ -280,7 +284,7 @@ let repeatMode = 0, shuffleOn = false;
 
 /* === Громкость === */
 au.volume = 0.8;
-$("vol").oninput = e => { au.volume = e.target.value/100; $("volVal").textContent = e.target.value+"%" };
+$("vol").oninput = e => { au.volume = e.target.value/100; if(ytReady) ytPlayer.setVolume(e.target.value); $("volVal").textContent = e.target.value+"%" };
 
 /* === Повтор и перемешивание === */
 $("repeatBtn").onclick = () => { repeatMode = (repeatMode+1)%3; $("repeatBtn").classList.toggle("on",repeatMode>0); $("repeatBtn").textContent = repeatMode===2?"🔂":"🔁"; toast(repeatMode===0?"Повтор выкл":repeatMode===1?"Повтор всех":"Повтор одного") };
@@ -369,6 +373,15 @@ async function render(){
     }).catch(err => {
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
+  } else if(view==="yt"){
+    if(!ytKey()){
+      v.innerHTML = '<h2>▶ YouTube</h2><p class="sub">Полные треки любых артистов через встроенный плеер YouTube. Бесплатно, Premium не нужен. Нужен бесплатный API-ключ.</p><button class="mode-btn on" id="ytLogin" style="padding:12px 20px;font-size:15px">Добавить ключ</button>';
+      $("ytLogin").onclick = () => { if(ytAskKey()) render() };
+    } else {
+      v.innerHTML = '<h2>▶ YouTube</h2><input class="sr" id="q" type="search" placeholder="Трек или исполнитель, например: Цой Группа крови" autocomplete="off"><div id="res"><p class="empty">Введите запрос — треки играют целиком, видео показано в углу экрана.</p></div><p style="text-align:center;margin-top:16px"><a href="#" id="ytOut" style="color:var(--mu);font-size:13px">Сменить ключ</a></p>';
+      $("ytOut").onclick = e => { e.preventDefault(); ls.set("yt-key",""); render() };
+      let t; $("q").oninput = e => { clearTimeout(t); const q=e.target.value.trim(); t=setTimeout(async()=>{ if(!q) return; $("res").innerHTML=skeletons(4); try{ allTracks=await ytSearch(q,40); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager() }catch(err){ $("res").innerHTML='<p class="empty">'+esc(err.message)+'</p>' } },600) };
+    }
   } else if(view==="sp"){
     if(!spLoggedIn()){
       v.innerHTML = '<h2>🟢 Spotify</h2><p class="sub">Полные версии треков. Нужен аккаунт Spotify Premium.</p><button class="mode-btn on" id="spLogin" style="padding:12px 20px;font-size:15px">Войти через Spotify</button>';
@@ -386,7 +399,7 @@ async function render(){
       const r = RADIOS.find(x=>x.id===rid);
       if(!r) return;
       if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; render(); toast("⏹ Радио остановлено"); return }
-      spStop(); liveRadio = rid; radio = false; cur = -1; queue = [];
+      spStop(); ytStop(); liveRadio = rid; radio = false; cur = -1; queue = [];
       au.src = r.src; au.play().catch(()=>{});
       $("pt").textContent = r.name; $("pa").textContent = "LIVE · "+r.desc;
       $("pcv").style.backgroundImage = ""; $("dur").textContent = "LIVE";
@@ -519,15 +532,77 @@ async function spPlay(x){
 }
 function spStop(){ if(spActive && spPlayer){ spPlayer.pause() } spActive = false }
 
+/* === YouTube (полные треки через встроенный плеер, без Premium) === */
+let ytPlayer = null, ytReady = false, ytActive = false, ytPending = null;
+const ytKey = () => ls.get("yt-key","");
+function ytAskKey(){
+  const k = (prompt("Вставьте YouTube Data API key.\nПолучить бесплатно: console.cloud.google.com → APIs → YouTube Data API v3 → Credentials → API key.")||"").trim();
+  if(k){ ls.set("yt-key",k); return true }
+  return false;
+}
+const decodeEnt = t => { const e=document.createElement("textarea"); e.innerHTML=t; return e.value };
+async function ytSearch(query,limit=20){
+  const ck = "yt-c:"+limit+":"+query, c = ls.get(ck,null);
+  if(c && Date.now()-c.at < 12*3600*1000) return c.v;
+  const r = await fetch("https://www.googleapis.com/youtube/v3/search?"+new URLSearchParams({part:"snippet",type:"video",videoCategoryId:"10",videoEmbeddable:"true",maxResults:limit,q:query,key:ytKey()}));
+  if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error("YouTube: "+((e.error&&e.error.message)||r.status)) }
+  const d = await r.json();
+  const v = (d.items||[]).map(i=>({
+    id:"yt_"+i.id.videoId, yt:i.id.videoId, t:decodeEnt(i.snippet.title), a:decodeEnt(i.snippet.channelTitle),
+    img:(i.snippet.thumbnails.medium||i.snippet.thumbnails.default||{}).url||"", src:"", d:0
+  }));
+  ls.set(ck,{at:Date.now(),v});
+  return v;
+}
+function ytInit(){
+  if(window.YT && YT.Player){ ytMake(); return }
+  if(window.__ytLoading) return;
+  window.__ytLoading = true;
+  window.onYouTubeIframeAPIReady = ytMake;
+  const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc);
+}
+function ytMake(){
+  if(ytPlayer) return;
+  ytPlayer = new YT.Player("ytp",{width:"200",height:"113",playerVars:{playsinline:1,rel:0,origin:location.origin},events:{
+    onReady:()=>{ ytReady = true; ytPlayer.setVolume(au.volume*100); if(ytPending){ const v=ytPending; ytPending=null; ytPlayer.loadVideoById(v) } },
+    onStateChange:e=>{
+      if(!ytActive) return;
+      if(e.data===1) $("pp").textContent="❚❚";
+      else if(e.data===2) $("pp").textContent="▶";
+      else if(e.data===0){ if(repeatMode===2){ ytPlayer.seekTo(0); ytPlayer.playVideo() } else step(1) }
+      if(e.data===1) $("dur").textContent = fmt(ytPlayer.getDuration());
+    },
+    onError:()=>{ toast("⚠ Это видео нельзя воспроизвести, следующее"); if(ytActive) step(1) }
+  }});
+}
+function ytPlay(x){
+  ytInit();
+  $("ytbox").classList.add("on");
+  if(ytReady) ytPlayer.loadVideoById(x.yt); else ytPending = x.yt;
+}
+function ytStop(){
+  if(ytActive && ytPlayer && ytReady) ytPlayer.pauseVideo();
+  ytActive = false; ytPending = null; $("ytbox").classList.remove("on");
+}
+setInterval(() => {
+  if(!ytActive || !ytReady || !ytPlayer.getDuration) return;
+  const d = ytPlayer.getDuration(); if(!d) return;
+  $("cur").textContent = fmt(ytPlayer.getCurrentTime());
+  $("seek").value = ytPlayer.getCurrentTime()/d*1000;
+}, 500);
+
 /* === Воспроизведение === */
 function play(i, from){
   if(from) queue = from;
   cur = i; const x = queue[cur];
   liveRadio = null;
-  if(x.uri){
+  if(x.yt){
+    au.pause(); spStop(); ytActive = true; ytPlay(x);
+  } else if(x.uri){
+    ytStop();
     if(!spDevice){ toast("Spotify ещё подключается, попробуйте через секунду"); return }
     au.pause(); spActive = true; spPlay(x);
-  } else { spStop(); au.src = x.src; au.play().catch(()=>{}); }
+  } else { spStop(); ytStop(); au.src = x.src; au.play().catch(()=>{}); }
   $("pt").textContent = x.t; $("pa").textContent = x.a + (radio?" · Моя волна":"");
   $("pcv").style.backgroundImage = `url('${x.img}')`; $("dur").textContent = fmt(x.d);
   $("plike").textContent = favs[x.id]?"♥":"♡";
@@ -539,7 +614,7 @@ function play(i, from){
 }
 function step(d){
   if(!queue.length) return;
-  if(repeatMode===2){ if(spActive){ spEndedFor=null; spPlayer.seek(0); spPlayer.resume() } else { au.currentTime=0; au.play() } return }
+  if(repeatMode===2){ if(ytActive){ ytPlayer.seekTo(0); ytPlayer.playVideo() } else if(spActive){ spEndedFor=null; spPlayer.seek(0); spPlayer.resume() } else { au.currentTime=0; au.play() } return }
   let next;
   if(shuffleOn){ next=Math.floor(Math.random()*queue.length) }
   else { next = radio ? Math.floor(Math.random()*queue.length) : (cur+d+queue.length)%queue.length }
@@ -552,8 +627,8 @@ au.onplay = au.onpause = () => { $("pp").textContent = au.paused?"▶":"❚❚";
 au.ontimeupdate = () => { if(liveRadio) return; $("cur").textContent=fmt(au.currentTime); if(au.duration){ $("seek").value=au.currentTime/au.duration*1000; $("dur").textContent=fmt(au.duration) } };
 au.onended = () => { if(liveRadio){au.play();return} if(repeatMode===2){au.currentTime=0;au.play();return} step(1) };
 au.onerror = () => { if(liveRadio){toast("⚠ Поток радио прерван");liveRadio=null;render();return} if(queue.length>1) step(1) };
-$("seek").oninput = e => { if(spActive && spState){ spPlayer.seek(e.target.value/1000*spState.duration); return } if(liveRadio) return; if(au.duration) au.currentTime = e.target.value/1000*au.duration };
-$("pp").onclick = () => { if(spActive && !liveRadio){ spPlayer.togglePlay(); return } if(liveRadio){au.paused?au.play():au.pause();return} if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
+$("seek").oninput = e => { if(ytActive && ytReady){ ytPlayer.seekTo(e.target.value/1000*ytPlayer.getDuration(),true); return } if(spActive && spState){ spPlayer.seek(e.target.value/1000*spState.duration); return } if(liveRadio) return; if(au.duration) au.currentTime = e.target.value/1000*au.duration };
+$("pp").onclick = () => { if(ytActive && !liveRadio){ ytPlayer.getPlayerState()===1 ? ytPlayer.pauseVideo() : ytPlayer.playVideo(); return } if(spActive && !liveRadio){ spPlayer.togglePlay(); return } if(liveRadio){au.paused?au.play():au.pause();return} if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
 $("next").onclick = () => { if(liveRadio) return; step(1) }; $("prev").onclick = () => { if(liveRadio) return; step(-1) };
 $("plike").onclick = () => { if(cur<0||liveRadio) return; toggleLike(queue[cur]); $("plike").textContent=favs[queue[cur].id]?"♥":"♡"; if(view==="fav") render() };
 $("waveBtn").onclick = async () => {
