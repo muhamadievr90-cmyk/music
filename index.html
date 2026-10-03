@@ -208,30 +208,38 @@ async function itunesSearch(query){
   })).filter(t => t.src); // only tracks with preview
 }
 
-/* === Tatar/Bashkir curated search queries === */
+/* === Curated search queries (iTunes previews) === */
 const TB_QUERIES = [
-  "татар музыка", "башкир музыка", "tatar song", "bashkir song",
-  "Идрис Газиев", "Salavat", "Башкорт", "tatar music"
+  "татар музыка", "башкир музыка", "tatar song", "bashkir song", "tatar music",
+  "Идрис Газиев", "Salavat", "Башкорт", "Ришат Тухватуллин", "Салават Фатхетдинов",
+  "Хания Фархи", "Алсу", "Гузель Уразова", "Ильсия Бадретдинова", "Айгуль Хайруллина",
+  "Зыя Кыямова", "Фирдус Тямаев", "Радик Юльякшин", "Ильхам Гимадиев", "татарская эстрада"
+];
+const CHANSON_QUERIES = [
+  "русский шансон", "шансон", "Mikhail Shufutinsky", "Grigory Leps", "Stas Mikhaylov",
+  "Butyrka", "Сергей Трофимов", "Alexander Rosenbaum", "Михаил Круг", "Ирина Круг",
+  "Александр Новиков", "Владимир Высоцкий", "Любэ", "Лесоповал", "Елена Ваенга",
+  "Вадим Казаченко", "Андрей Бандера", "Игорь Растеряев", "Таня Тишинская", "Вилли Токарев"
+];
+const TSOI_QUERIES = [
+  "Виктор Цой", "Виктор Цой Кино", "Tsoi Kino", "Kino группа крови",
+  "Kino Звезда по имени Солнце", "Кино Пачка сигарет", "Кино Мы ждём перемен",
+  "Кино Кукушка", "Кино Закрой за мной дверь", "Кино Спокойная ночь",
+  "ДДТ", "Аквариум", "Наутилус Помпилиус", "Алиса", "Ария", "Сплин", "Би-2", "Мумий Тролль"
 ];
 
-async function loadTatarBashkir(){
-  // Search multiple queries and combine
-  const all = await Promise.all(TB_QUERIES.map(q => itunesSearch(q).catch(() => [])));
-  // Flatten, dedupe by id, limit to 50
-  const seen = new Set();
-  const combined = [];
-  for(const list of all){
-    for(const t of list){
-      if(!seen.has(t.id)){
-        seen.add(t.id);
-        combined.push(t);
-        if(combined.length >= 50) break;
-      }
-    }
+async function loadCurated(queries){
+  const all = await Promise.all(queries.map(q => itunesSearch(q).catch(() => [])));
+  const seen = new Set(), combined = [];
+  for(const l of all) for(const t of l){
+    if(!seen.has(t.id)){ seen.add(t.id); combined.push(t) }
   }
-  return combined;
+  return combined.slice(0,150);
 }
-const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental"};
+const loadTatarBashkir = () => loadCurated(TB_QUERIES);
+const loadChanson = () => loadCurated(CHANSON_QUERIES);
+const loadTsoi = () => loadCurated(TSOI_QUERIES);
+const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental","Блюз":"blues","Кантри":"country","Хаус":"house","Эмбиент":"ambient","Панк":"punk","Лоу-фай":"lofi","Транс":"trance","Соул":"soul","Фанк":"funk","Латино":"latin"};
 const PER_PAGE = 20;
 const RADIOS = [
   {id:"rr", name:"Радио Роксана", desc:"Русское радио", src:"https://rrfm.bcradio.ru/live"},
@@ -241,7 +249,14 @@ const RADIOS = [
   {id:"yul", name:"Юлдаш", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/uldash.mp3"},
   {id:"mat", name:"Матур Радио", desc:"Башкирское радио", src:"http://radio.matur-tv.ru/radio/radio-mp3-128k"},
   {id:"kit", name:"Милли радио Китап", desc:"Татарское радио", src:"http://radio.tatmedia.com:8800/kitapfm"},
-  {id:"shn", name:"Радио Шансон", desc:"Русский шансон 24/7", src:"https://chanson.hostingradio.ru:8041/chanson256.mp3"}
+  {id:"shn", name:"Радио Шансон", desc:"Русский шансон 24/7", src:"https://chanson.hostingradio.ru:8041/chanson256.mp3"},
+  {id:"eur", name:"Европа Плюс", desc:"Хиты", src:"https://ep256.hostingradio.ru:8052/europaplus256.mp3"},
+  {id:"nrj", name:"Energy", desc:"Танцевальная", src:"https://ic7.101.ru:8000/v1_1"},
+  {id:"rec", name:"Радио Рекорд", desc:"Электроника", src:"https://radiorecord.hostingradio.ru/rr_main96.aacp"},
+  {id:"mx", name:"Максимум", desc:"Рок", src:"https://maximum.hostingradio.ru/maximum96.aacp"},
+  {id:"nsh", name:"Наше Радио", desc:"Русский рок", src:"https://nashe1.hostingradio.ru/nashe-128.mp3"},
+  {id:"dfm", name:"DFM", desc:"Клубная музыка", src:"https://dfm.hostingradio.ru/dfm96.aacp"},
+  {id:"jaz", name:"Радио Jazz", desc:"Джаз", src:"https://nashe.streamr.ru/jazz-128.mp3"}
 ];
 const au = new Audio();
 const $ = id => document.getElementById(id);
@@ -348,66 +363,12 @@ async function render(){
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
   } else if(view==="radio"){
-    v.innerHTML = '<h2>📻 Радио</h2><div class="radio-grid">'+RADIOS.map(r=>`<div class="radio-card${liveRadio===r.id?" playing":""}" data-radio="${r.id}"><div class="ricon">${r.icon}</div><div class="rname">${esc(r.name)}${liveRadio===r.id?'<span class="radio-live">LIVE</span>':''}</div><div class="rdesc">${esc(r.desc)}</div></div>`).join("")+'</div><p style="color:var(--mu);font-size:13px;margin-top:12px;text-align:center">Нажмите на станцию — радио начнёт играть</p>';
+    v.innerHTML = '<h2>📻 Радио</h2><div class="radio-grid">'+RADIOS.map(r=>`<div class="radio-card${liveRadio===r.id?" playing":""}" data-radio="${r.id}"><div class="ricon">${r.icon||"📻"}</div><div class="rname">${esc(r.name)}${liveRadio===r.id?'<span class="radio-live">LIVE</span>':''}</div><div class="rdesc">${esc(r.desc)}</div></div>`).join("")+'</div><p style="color:var(--mu);font-size:13px;margin-top:12px;text-align:center">Нажмите на станцию — радио начнёт играть</p>';
     v.querySelectorAll(".radio-card").forEach(c => c.onclick = () => {
       const rid = c.dataset.radio;
       const r = RADIOS.find(x=>x.id===rid);
       if(!r) return;
-      if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; /* === Dynamic sky theme based on time of day === */
-function applySkyTheme(){
-  const h = new Date().getHours();
-  let theme;
-  if(h>=5 && h<11){
-    // Morning: рассвет с солнцем — soft pink-orange sunrise
-    theme = {
-      skyTop:'#ff9e7d', skyBottom:'#ffd29e',
-      sunColor:'#ff6b35', sunGlow:'rgba(255,150,80,0.6)',
-      stripeColor:'rgba(255,200,150,0.4)',
-      bg:'#ff9e7d', bg2:'#ffd29e', tx:'#3a1a0a', mu:'#6a3a1a',
-      ac:'#ff5c8a', ln:'rgba(80,40,20,0.15)'
-    };
-  } else if(h>=11 && h<17){
-    // Day: просто солнышко — bright blue sky with yellow sun
-    theme = {
-      skyTop:'#4a9fff', skyBottom:'#a3d5ff',
-      sunColor:'#ffeb3b', sunGlow:'rgba(255,235,59,0.7)',
-      stripeColor:'rgba(255,255,255,0.3)',
-      bg:'#4a9fff', bg2:'#a3d5ff', tx:'#0a1a3a', mu:'#2a4a7a',
-      ac:'#ff5c8a', ln:'rgba(255,255,255,0.2)'
-    };
-  } else if(h>=17 && h<21){
-    // Evening: закат — deep orange-red sunset
-    theme = {
-      skyTop:'#c43e3e', skyBottom:'#ff7e5f',
-      sunColor:'#ff3c1f', sunGlow:'rgba(255,80,40,0.7)',
-      stripeColor:'rgba(80,15,25,0.6)',
-      bg:'#c43e3e', bg2:'#ff7e5f', tx:'#fff0e8', mu:'#ffd0c0',
-      ac:'#ff5c8a', ln:'rgba(255,255,255,0.12)'
-    };
-  } else {
-    // Night: тёмная ночь с луной — dark night with moon
-    theme = {
-      skyTop:'#0a0a1f', skyBottom:'#1a1a3a',
-      sunColor:'#e8e8ff', sunGlow:'rgba(200,200,255,0.4)',
-      stripeColor:'rgba(80,80,140,0.4)',
-      bg:'#0a0a1f', bg2:'#1a1a3a', tx:'#e8e8ff', mu:'#8888bb',
-      ac:'#7c8cff', ln:'rgba(255,255,255,0.08)'
-    };
-  }
-  const r = document.documentElement.style;
-  r.setProperty('--bg', theme.bg);
-  r.setProperty('--bg2', theme.bg2);
-  r.setProperty('--tx', theme.tx);
-  r.setProperty('--mu', theme.mu);
-  r.setProperty('--ac', theme.ac);
-  r.setProperty('--ln', theme.ln);
-  r.setProperty('--sun-color', theme.sunColor);
-  r.setProperty('--sun-glow', theme.sunGlow);
-  r.setProperty('--stripe-color', theme.stripeColor);
-  r.setProperty('--sky-top', theme.skyTop);
-  r.setProperty('--sky-bottom', theme.skyBottom);
-}
-render(); toast("⏹ Радио остановлено"); return }
+      if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; render(); toast("⏹ Радио остановлено"); return }
       liveRadio = rid; radio = false; cur = -1; queue = [];
       au.src = r.src; au.play().catch(()=>{});
       $("pt").textContent = r.name; $("pa").textContent = "LIVE · "+r.desc;
@@ -561,6 +522,60 @@ if("serviceWorker" in navigator){
 }
 
 /* === Dynamic sky theme + Source toggle === */
+/* === Dynamic sky theme based on time of day === */
+function applySkyTheme(){
+  const h = new Date().getHours();
+  let theme;
+  if(h>=5 && h<11){
+    // Morning: рассвет с солнцем — soft pink-orange sunrise
+    theme = {
+      skyTop:'#ff9e7d', skyBottom:'#ffd29e',
+      sunColor:'#ff6b35', sunGlow:'rgba(255,150,80,0.6)',
+      stripeColor:'rgba(255,200,150,0.4)',
+      bg:'#ff9e7d', bg2:'#ffd29e', tx:'#3a1a0a', mu:'#6a3a1a',
+      ac:'#ff5c8a', ln:'rgba(80,40,20,0.15)'
+    };
+  } else if(h>=11 && h<17){
+    // Day: просто солнышко — bright blue sky with yellow sun
+    theme = {
+      skyTop:'#4a9fff', skyBottom:'#a3d5ff',
+      sunColor:'#ffeb3b', sunGlow:'rgba(255,235,59,0.7)',
+      stripeColor:'rgba(255,255,255,0.3)',
+      bg:'#4a9fff', bg2:'#a3d5ff', tx:'#0a1a3a', mu:'#2a4a7a',
+      ac:'#ff5c8a', ln:'rgba(255,255,255,0.2)'
+    };
+  } else if(h>=17 && h<21){
+    // Evening: закат — deep orange-red sunset
+    theme = {
+      skyTop:'#c43e3e', skyBottom:'#ff7e5f',
+      sunColor:'#ff3c1f', sunGlow:'rgba(255,80,40,0.7)',
+      stripeColor:'rgba(80,15,25,0.6)',
+      bg:'#c43e3e', bg2:'#ff7e5f', tx:'#fff0e8', mu:'#ffd0c0',
+      ac:'#ff5c8a', ln:'rgba(255,255,255,0.12)'
+    };
+  } else {
+    // Night: тёмная ночь с луной — dark night with moon
+    theme = {
+      skyTop:'#0a0a1f', skyBottom:'#1a1a3a',
+      sunColor:'#e8e8ff', sunGlow:'rgba(200,200,255,0.4)',
+      stripeColor:'rgba(80,80,140,0.4)',
+      bg:'#0a0a1f', bg2:'#1a1a3a', tx:'#e8e8ff', mu:'#8888bb',
+      ac:'#7c8cff', ln:'rgba(255,255,255,0.08)'
+    };
+  }
+  const r = document.documentElement.style;
+  r.setProperty('--bg', theme.bg);
+  r.setProperty('--bg2', theme.bg2);
+  r.setProperty('--tx', theme.tx);
+  r.setProperty('--mu', theme.mu);
+  r.setProperty('--ac', theme.ac);
+  r.setProperty('--ln', theme.ln);
+  r.setProperty('--sun-color', theme.sunColor);
+  r.setProperty('--sun-glow', theme.sunGlow);
+  r.setProperty('--stripe-color', theme.stripeColor);
+  r.setProperty('--sky-top', theme.skyTop);
+  r.setProperty('--sky-bottom', theme.skyBottom);
+}
 applySkyTheme();
 setInterval(applySkyTheme, 5*60*1000);
 
