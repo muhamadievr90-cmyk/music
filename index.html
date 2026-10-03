@@ -91,6 +91,7 @@ h2{font-size:17px;margin:8px 0 10px}
 .pager{display:flex;justify-content:center;gap:8px;margin:16px 0}
 .pager button{padding:8px 16px;border-radius:99px;border:1px solid var(--ln);color:var(--mu);font-weight:600}
 .pager button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.favbar{display:flex;gap:8px;margin:0 0 12px}.favbtn{background:var(--ac);color:#000;border:0;border-radius:99px;padding:8px 16px;font-weight:600;cursor:pointer}
 .hist-tag{display:inline-block;padding:4px 12px;border-radius:99px;border:1px solid var(--ln);color:var(--mu);font-size:13px;margin:3px;cursor:pointer}
 .hist-tag:hover{border-color:var(--ac);color:var(--ac)}
 /* Radio styles */
@@ -146,7 +147,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="yt">▶ YouTube</button><button data-v="sp">🟢 Spotify</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="yt">▶ YouTube</button><button data-v="sp">🟢 Spotify</button><button data-v="radio">Радио</button><button data-v="fav">♡ Любимое</button><button data-v="hist">История</button>
   <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
@@ -411,7 +412,7 @@ async function render(){
   } else if(view==="fav"){
     allTracks = Object.values(favs);
     page = 0; list = paginatedList(allTracks, page);
-    v.innerHTML = '<h2>Любимое</h2>'+(list.length?rows(list):'<p class="empty">Нажмите ♡ у трека — он появится здесь.</p>');
+    v.innerHTML = '<h2>Любимое · '+allTracks.length+'</h2>'+(allTracks.length?'<div class="favbar"><button class="favbtn" data-favplay="0">▶ Играть всё</button><button class="favbtn" data-favplay="1">🔀 Вперемешку</button></div>':'')+(list.length?rows(list):'<p class="empty">Нажмите ♡ у трека — он появится здесь.</p>');
   } else if(view==="hist"){
     v.innerHTML = '<h2>История</h2>'+(hist.length?hist.map(h=>`<span class="hist-tag" data-q="${esc(h)}">${esc(h)}</span>`).join(""):'<p class="empty">Здесь появятся ваши поисковые запросы.</p>');
     v.querySelectorAll(".hist-tag").forEach(t => t.onclick = () => { view="search"; document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("on",b.dataset.v==="search")); render(); setTimeout(()=>{const q=$("q");if(q){q.value=t.dataset.q;q.dispatchEvent(new Event("input"))}},50) });
@@ -640,6 +641,8 @@ $("waveBtn").onclick = async () => {
 document.addEventListener("click", e => {
   const l = e.target.closest("[data-like]");
   if(l){ toggleLike(list[+l.dataset.like]); render(); return }
+  const fp = e.target.closest("[data-favplay]");
+  if(fp){ const a = Object.values(favs); if(fp.dataset.favplay==="1") a.sort(()=>Math.random()-.5); radio=false; liveRadio=null; play(0, a); return }
   const r = e.target.closest(".rowmain");
   if(r){ radio=false; liveRadio=null; play(+r.dataset.i, list) }
 });
