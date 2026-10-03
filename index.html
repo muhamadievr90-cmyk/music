@@ -61,12 +61,14 @@ h2{font-size:17px;margin:8px 0 10px}
 .card{background:var(--bg2);border-radius:24px;padding:22px;margin:24px 0}
 .card a{color:var(--ac)}
 .nav{position:fixed;left:0;right:0;bottom:0;padding-bottom:env(safe-area-inset-bottom);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);border-top:1px solid var(--ln);z-index:5}
-.nav .in{max-width:720px;margin:0 auto;display:flex}
-.nav button{flex:1;padding:11px 0 8px;color:var(--mu);font-weight:600;font-size:12px}
+.nav .in{max-width:720px;margin:0 auto;display:flex;overflow-x:auto}
+.nav button{flex:1 0 auto;white-space:nowrap;padding:11px 8px 8px;color:var(--mu);font-weight:600;font-size:12px}
 .nav button.on{color:var(--tx)}
 .nav button::after{content:"";display:block;width:18px;height:3px;border-radius:3px;margin:4px auto 0}
 .nav button.on::after{background:var(--ac)}
 .pl{position:fixed;left:10px;right:10px;bottom:calc(58px + env(safe-area-inset-bottom));max-width:700px;margin:0 auto;z-index:6;border-radius:24px;padding:12px 14px 10px;color:#fff;background:linear-gradient(120deg,#ff5c8a,#7a4dff);box-shadow:0 18px 40px -12px rgba(0,0,0,.55)}
+#ytbox{position:fixed;top:12px;right:10px;width:200px;height:113px;z-index:7;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4);background:#000;display:none}
+#ytbox.on{display:block}
 .pl .t{display:flex;align-items:center;gap:12px}
 .pl .cv{width:46px;height:46px}.pl .m span{color:rgba(255,255,255,.8)}
 .ct{display:flex;align-items:center}.ct button{font-size:20px;padding:8px 9px}
@@ -112,6 +114,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="ytbox"><div id="ytp"></div></div>
 
 <div class="wrap">
   <section class="hero" id="hero">
@@ -143,7 +146,7 @@ h2{font-size:17px;margin:8px 0 10px}
 </div>
 
 <nav class="nav"><div class="in">
-  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
+  <button data-v="home" class="on">Главное</button><button data-v="search">Поиск</button><button data-v="tb">🎵 Татар-Башкир</button><button data-v="ch">🎤 Шансон</button><button data-v="tsoi">🎸 Цой</button><button data-v="yt">▶ YouTube</button><button data-v="sp">🟢 Spotify</button><button data-v="radio">Радио</button><button data-v="fav">♡</button><button data-v="hist">История</button>
   <button class="src-toggle" id="srcToggle" title="Источник музыки">🎵 Jamendo</button>
 </div></nav>
 
@@ -208,30 +211,46 @@ async function itunesSearch(query){
   })).filter(t => t.src); // only tracks with preview
 }
 
-/* === Tatar/Bashkir curated search queries === */
+/* === Curated search queries (iTunes previews) === */
 const TB_QUERIES = [
-  "татар музыка", "башкир музыка", "tatar song", "bashkir song",
-  "Идрис Газиев", "Salavat", "Башкорт", "tatar music"
+  "татар музыка", "башкир музыка", "tatar song", "bashkir song", "tatar music",
+  "Идрис Газиев", "Salavat", "Башкорт", "Ришат Тухватуллин", "Салават Фатхетдинов",
+  "Хания Фархи", "Алсу", "Гузель Уразова", "Ильсия Бадретдинова", "Айгуль Хайруллина",
+  "Зыя Кыямова", "Фирдус Тямаев", "Радик Юльякшин", "Ильхам Гимадиев", "татарская эстрада"
+];
+const CHANSON_QUERIES = [
+  "русский шансон", "шансон", "Mikhail Shufutinsky", "Grigory Leps", "Stas Mikhaylov",
+  "Butyrka", "Сергей Трофимов", "Alexander Rosenbaum", "Михаил Круг", "Ирина Круг",
+  "Александр Новиков", "Владимир Высоцкий", "Любэ", "Лесоповал", "Елена Ваенга",
+  "Вадим Казаченко", "Андрей Бандера", "Игорь Растеряев", "Таня Тишинская", "Вилли Токарев"
+];
+const TSOI_QUERIES = [
+  "Виктор Цой", "Виктор Цой Кино", "Tsoi Kino", "Kino группа крови",
+  "Kino Звезда по имени Солнце", "Кино Пачка сигарет", "Кино Мы ждём перемен",
+  "Кино Кукушка", "Кино Закрой за мной дверь", "Кино Спокойная ночь",
+  "ДДТ", "Аквариум", "Наутилус Помпилиус", "Алиса", "Ария", "Сплин", "Би-2", "Мумий Тролль"
 ];
 
-async function loadTatarBashkir(){
-  // Search multiple queries and combine
-  const all = await Promise.all(TB_QUERIES.map(q => itunesSearch(q).catch(() => [])));
-  // Flatten, dedupe by id, limit to 50
-  const seen = new Set();
-  const combined = [];
-  for(const list of all){
-    for(const t of list){
-      if(!seen.has(t.id)){
-        seen.add(t.id);
-        combined.push(t);
-        if(combined.length >= 50) break;
-      }
-    }
-  }
-  return combined;
+async function jamendoSearchFull(query){
+  const data = await jamendoFetch("tracks/?limit=20&search="+encodeURIComponent(query));
+  return (data.results||[]).filter(t=>t.audio).map(t=>({id:String(t.id),t:t.name,a:t.artist_name,img:t.image,src:t.audio,d:Number(t.duration)}));
 }
-const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental"};
+async function loadCurated(queries){
+  // full tracks first (Jamendo + Audius), 30-sec iTunes previews only as fallback at the end
+  const full = await Promise.all(queries.map(q => Promise.all([jamendoSearchFull(q).catch(()=>[]), audiusSearch(q).catch(()=>[])]).then(r=>r.flat())));
+  const prev = await Promise.all(queries.map(q => itunesSearch(q).catch(() => [])));
+  const yt = ytKey() ? await Promise.all(queries.slice(0,6).map(q => ytSearch(q,10).catch(() => []))) : [];
+  const sp = spLoggedIn() ? await Promise.all(queries.map(q => spSearch(q,8).catch(() => []))) : [];
+  const seen = new Set(), combined = [];
+  for(const l of [...sp, ...yt, ...full, ...prev]) for(const t of l){
+    if(!seen.has(t.id)){ seen.add(t.id); combined.push(t) }
+  }
+  return combined.slice(0,200);
+}
+const loadTatarBashkir = () => loadCurated(TB_QUERIES);
+const loadChanson = () => loadCurated(CHANSON_QUERIES);
+const loadTsoi = () => loadCurated(TSOI_QUERIES);
+const GENRES = {"Все":"","Поп":"pop","Рэп":"hiphop","Рок":"rock","Электроника":"electronic","R&B":"rnb","Альтернатива":"alternative","Джаз":"jazz","Классика":"classical","Лаунж":"lounge","Фолк":"folk","Метал":"metal","Реггетон":"reggae","Танцевальная":"dance","Саундтрек":"soundtrack","Мир":"world","Инструментал":"instrumental","Блюз":"blues","Кантри":"country","Хаус":"house","Эмбиент":"ambient","Панк":"punk","Лоу-фай":"lofi","Транс":"trance","Соул":"soul","Фанк":"funk","Латино":"latin"};
 const PER_PAGE = 20;
 const RADIOS = [
   {id:"rr", name:"Радио Роксана", desc:"Русское радио", src:"https://rrfm.bcradio.ru/live"},
@@ -241,7 +260,14 @@ const RADIOS = [
   {id:"yul", name:"Юлдаш", desc:"Башкирское радио", src:"https://radio.mediacdn.ru/uldash.mp3"},
   {id:"mat", name:"Матур Радио", desc:"Башкирское радио", src:"http://radio.matur-tv.ru/radio/radio-mp3-128k"},
   {id:"kit", name:"Милли радио Китап", desc:"Татарское радио", src:"http://radio.tatmedia.com:8800/kitapfm"},
-  {id:"shn", name:"Радио Шансон", desc:"Русский шансон 24/7", src:"https://chanson.hostingradio.ru:8041/chanson256.mp3"}
+  {id:"shn", name:"Радио Шансон", desc:"Русский шансон 24/7", src:"https://chanson.hostingradio.ru:8041/chanson256.mp3"},
+  {id:"eur", name:"Европа Плюс", desc:"Хиты", src:"https://ep256.hostingradio.ru:8052/europaplus256.mp3"},
+  {id:"nrj", name:"Energy", desc:"Танцевальная", src:"https://ic7.101.ru:8000/v1_1"},
+  {id:"rec", name:"Радио Рекорд", desc:"Электроника", src:"https://radiorecord.hostingradio.ru/rr_main96.aacp"},
+  {id:"mx", name:"Максимум", desc:"Рок", src:"https://maximum.hostingradio.ru/maximum96.aacp"},
+  {id:"nsh", name:"Наше Радио", desc:"Русский рок", src:"https://nashe1.hostingradio.ru/nashe-128.mp3"},
+  {id:"dfm", name:"DFM", desc:"Клубная музыка", src:"https://dfm.hostingradio.ru/dfm96.aacp"},
+  {id:"jaz", name:"Радио Jazz", desc:"Джаз", src:"https://nashe.streamr.ru/jazz-128.mp3"}
 ];
 const au = new Audio();
 const $ = id => document.getElementById(id);
@@ -258,7 +284,7 @@ let repeatMode = 0, shuffleOn = false;
 
 /* === Громкость === */
 au.volume = 0.8;
-$("vol").oninput = e => { au.volume = e.target.value/100; $("volVal").textContent = e.target.value+"%" };
+$("vol").oninput = e => { au.volume = e.target.value/100; if(ytReady) ytPlayer.setVolume(e.target.value); $("volVal").textContent = e.target.value+"%" };
 
 /* === Повтор и перемешивание === */
 $("repeatBtn").onclick = () => { repeatMode = (repeatMode+1)%3; $("repeatBtn").classList.toggle("on",repeatMode>0); $("repeatBtn").textContent = repeatMode===2?"🔂":"🔁"; toast(repeatMode===0?"Повтор выкл":repeatMode===1?"Повтор всех":"Повтор одного") };
@@ -318,7 +344,7 @@ async function render(){
     v.innerHTML = '<input class="sr" id="q" type="search" placeholder="Трек, исполнитель, жанр" autocomplete="off"><div id="res"><p class="empty">Начните вводить название или имя артиста.</p></div>';
     let t; $("q").oninput = e => { clearTimeout(t); const s=e.target.value.trim(); t=setTimeout(async()=>{ if(!s) return; $("res").innerHTML=skeletons(4); try{ allTracks=await loadSearch(s); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager(); if(!hist.includes(s)){hist.unshift(s);if(hist.length>30)hist.pop();ls.set("m-hist",hist)} }catch(err){ $("res").innerHTML='<p class="empty">Ошибка поиска: '+esc(err.message)+'</p>' } },350) };
   } else if(view==="tb"){
-    v.innerHTML = '<h2>🎵 Татарско-башкирская музыка</h2><p class="sub">Коммерческие треки (30-сек превью) из iTunes</p><div id="res">'+skeletons(6)+'</div>';
+    v.innerHTML = '<h2>🎵 Татарско-башкирская музыка</h2><p class="sub">Полные треки из Jamendo/Audius, затем 30-сек превью из iTunes</p><div id="res">'+skeletons(6)+'</div>';
     loadTatarBashkir().then(tracks => {
       allTracks = tracks; totalLoaded = tracks.length; page = 0;
       list = paginatedList(allTracks, page);
@@ -328,7 +354,7 @@ async function render(){
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
   } else if(view==="ch"){
-    v.innerHTML = '<h2>🎤 Русский шансон</h2><p class="sub">Шуфутинский, Лепс, Михайлов, Бутырка и др. (30-сек превью)</p><div id="res">'+skeletons(6)+'</div>';
+    v.innerHTML = '<h2>🎤 Русский шансон</h2><p class="sub">Полные треки (Jamendo/Audius), затем 30-сек превью</p><div id="res">'+skeletons(6)+'</div>';
     loadChanson().then(tracks => {
       allTracks = tracks; totalLoaded = tracks.length; page = 0;
       list = paginatedList(allTracks, page);
@@ -338,7 +364,7 @@ async function render(){
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
   } else if(view==="tsoi"){
-    v.innerHTML = '<h2>🎸 Виктор Цой / Кино</h2><p class="sub">Легенды русского рока (30-сек превью из iTunes)</p><div id="res">'+skeletons(6)+'</div>';
+    v.innerHTML = '<h2>🎸 Виктор Цой / Кино</h2><p class="sub">Полные треки (Jamendo/Audius), затем 30-сек превью из iTunes</p><div id="res">'+skeletons(6)+'</div>';
     loadTsoi().then(tracks => {
       allTracks = tracks; totalLoaded = tracks.length; page = 0;
       list = paginatedList(allTracks, page);
@@ -347,68 +373,33 @@ async function render(){
     }).catch(err => {
       $("res").innerHTML = '<p class="empty">Ошибка загрузки: '+esc(err.message)+'</p>';
     });
+  } else if(view==="yt"){
+    if(!ytKey()){
+      v.innerHTML = '<h2>▶ YouTube</h2><p class="sub">Полные треки любых артистов через встроенный плеер YouTube. Бесплатно, Premium не нужен. Нужен бесплатный API-ключ.</p><button class="mode-btn on" id="ytLogin" style="padding:12px 20px;font-size:15px">Добавить ключ</button>';
+      $("ytLogin").onclick = () => { if(ytAskKey()) render() };
+    } else {
+      v.innerHTML = '<h2>▶ YouTube</h2><input class="sr" id="q" type="search" placeholder="Трек или исполнитель, например: Цой Группа крови" autocomplete="off"><div id="res"><p class="empty">Введите запрос — треки играют целиком, видео показано в углу экрана.</p></div><p style="text-align:center;margin-top:16px"><a href="#" id="ytOut" style="color:var(--mu);font-size:13px">Сменить ключ</a></p>';
+      $("ytOut").onclick = e => { e.preventDefault(); ls.set("yt-key",""); render() };
+      let t; $("q").oninput = e => { clearTimeout(t); const q=e.target.value.trim(); t=setTimeout(async()=>{ if(!q) return; $("res").innerHTML=skeletons(4); try{ allTracks=await ytSearch(q,40); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager() }catch(err){ $("res").innerHTML='<p class="empty">'+esc(err.message)+'</p>' } },600) };
+    }
+  } else if(view==="sp"){
+    if(!spLoggedIn()){
+      v.innerHTML = '<h2>🟢 Spotify</h2><p class="sub">Полные версии треков. Нужен аккаунт Spotify Premium.</p><button class="mode-btn on" id="spLogin" style="padding:12px 20px;font-size:15px">Войти через Spotify</button>';
+      $("spLogin").onclick = spLogin;
+    } else {
+      spInitPlayer();
+      v.innerHTML = '<h2>🟢 Spotify</h2><input class="sr" id="q" type="search" placeholder="Трек или исполнитель" autocomplete="off"><div id="res"><p class="empty">Введите запрос — треки будут играть целиком.</p></div><p style="text-align:center;margin-top:16px"><a href="#" id="spOut" style="color:var(--mu);font-size:13px">Выйти из Spotify</a></p>';
+      $("spOut").onclick = e => { e.preventDefault(); spLogout() };
+      let t; $("q").oninput = e => { clearTimeout(t); const q=e.target.value.trim(); t=setTimeout(async()=>{ if(!q) return; $("res").innerHTML=skeletons(4); try{ allTracks=await spSearch(q); totalLoaded=allTracks.length; page=0; list=paginatedList(allTracks,page); $("res").innerHTML=rows(list)+pagerHTML(); bindPager() }catch(err){ $("res").innerHTML='<p class="empty">Ошибка: '+esc(err.message)+'</p>' } },350) };
+    }
   } else if(view==="radio"){
-    v.innerHTML = '<h2>📻 Радио</h2><div class="radio-grid">'+RADIOS.map(r=>`<div class="radio-card${liveRadio===r.id?" playing":""}" data-radio="${r.id}"><div class="ricon">${r.icon}</div><div class="rname">${esc(r.name)}${liveRadio===r.id?'<span class="radio-live">LIVE</span>':''}</div><div class="rdesc">${esc(r.desc)}</div></div>`).join("")+'</div><p style="color:var(--mu);font-size:13px;margin-top:12px;text-align:center">Нажмите на станцию — радио начнёт играть</p>';
+    v.innerHTML = '<h2>📻 Радио</h2><div class="radio-grid">'+RADIOS.map(r=>`<div class="radio-card${liveRadio===r.id?" playing":""}" data-radio="${r.id}"><div class="ricon">${r.icon||"📻"}</div><div class="rname">${esc(r.name)}${liveRadio===r.id?'<span class="radio-live">LIVE</span>':''}</div><div class="rdesc">${esc(r.desc)}</div></div>`).join("")+'</div><p style="color:var(--mu);font-size:13px;margin-top:12px;text-align:center">Нажмите на станцию — радио начнёт играть</p>';
     v.querySelectorAll(".radio-card").forEach(c => c.onclick = () => {
       const rid = c.dataset.radio;
       const r = RADIOS.find(x=>x.id===rid);
       if(!r) return;
-      if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; /* === Dynamic sky theme based on time of day === */
-function applySkyTheme(){
-  const h = new Date().getHours();
-  let theme;
-  if(h>=5 && h<11){
-    // Morning: рассвет с солнцем — soft pink-orange sunrise
-    theme = {
-      skyTop:'#ff9e7d', skyBottom:'#ffd29e',
-      sunColor:'#ff6b35', sunGlow:'rgba(255,150,80,0.6)',
-      stripeColor:'rgba(255,200,150,0.4)',
-      bg:'#ff9e7d', bg2:'#ffd29e', tx:'#3a1a0a', mu:'#6a3a1a',
-      ac:'#ff5c8a', ln:'rgba(80,40,20,0.15)'
-    };
-  } else if(h>=11 && h<17){
-    // Day: просто солнышко — bright blue sky with yellow sun
-    theme = {
-      skyTop:'#4a9fff', skyBottom:'#a3d5ff',
-      sunColor:'#ffeb3b', sunGlow:'rgba(255,235,59,0.7)',
-      stripeColor:'rgba(255,255,255,0.3)',
-      bg:'#4a9fff', bg2:'#a3d5ff', tx:'#0a1a3a', mu:'#2a4a7a',
-      ac:'#ff5c8a', ln:'rgba(255,255,255,0.2)'
-    };
-  } else if(h>=17 && h<21){
-    // Evening: закат — deep orange-red sunset
-    theme = {
-      skyTop:'#c43e3e', skyBottom:'#ff7e5f',
-      sunColor:'#ff3c1f', sunGlow:'rgba(255,80,40,0.7)',
-      stripeColor:'rgba(80,15,25,0.6)',
-      bg:'#c43e3e', bg2:'#ff7e5f', tx:'#fff0e8', mu:'#ffd0c0',
-      ac:'#ff5c8a', ln:'rgba(255,255,255,0.12)'
-    };
-  } else {
-    // Night: тёмная ночь с луной — dark night with moon
-    theme = {
-      skyTop:'#0a0a1f', skyBottom:'#1a1a3a',
-      sunColor:'#e8e8ff', sunGlow:'rgba(200,200,255,0.4)',
-      stripeColor:'rgba(80,80,140,0.4)',
-      bg:'#0a0a1f', bg2:'#1a1a3a', tx:'#e8e8ff', mu:'#8888bb',
-      ac:'#7c8cff', ln:'rgba(255,255,255,0.08)'
-    };
-  }
-  const r = document.documentElement.style;
-  r.setProperty('--bg', theme.bg);
-  r.setProperty('--bg2', theme.bg2);
-  r.setProperty('--tx', theme.tx);
-  r.setProperty('--mu', theme.mu);
-  r.setProperty('--ac', theme.ac);
-  r.setProperty('--ln', theme.ln);
-  r.setProperty('--sun-color', theme.sunColor);
-  r.setProperty('--sun-glow', theme.sunGlow);
-  r.setProperty('--stripe-color', theme.stripeColor);
-  r.setProperty('--sky-top', theme.skyTop);
-  r.setProperty('--sky-bottom', theme.skyBottom);
-}
-render(); toast("⏹ Радио остановлено"); return }
-      liveRadio = rid; radio = false; cur = -1; queue = [];
+      if(liveRadio === rid){ au.pause(); liveRadio=null; $("pt").textContent="Ничего не играет"; $("pa").textContent="Выберите трек"; $("pp").textContent="▶"; render(); toast("⏹ Радио остановлено"); return }
+      spStop(); ytStop(); liveRadio = rid; radio = false; cur = -1; queue = [];
       au.src = r.src; au.play().catch(()=>{});
       $("pt").textContent = r.name; $("pa").textContent = "LIVE · "+r.desc;
       $("pcv").style.backgroundImage = ""; $("dur").textContent = "LIVE";
@@ -432,7 +423,7 @@ function pagerHTML(){
   if(totalLoaded<=PER_PAGE) return "";
   const pages = Math.ceil(totalLoaded/PER_PAGE);
   let h = '<div class="pager">';
-  for(let i=0;i<pages&&i<8;i++) h += `<button class="${i===page?"on":""}" data-p="${i}">${i+1}</button>`;
+  for(let i=0;i<pages&&i<10;i++) h += `<button class="${i===page?"on":""}" data-p="${i}">${i+1}</button>`;
   h += '</div>';
   return h;
 }
@@ -440,12 +431,178 @@ function bindPager(){
   document.querySelectorAll(".pager button").forEach(b => b.onclick = () => { page=+b.dataset.p; list=paginatedList(allTracks,page); const v=$("view"); const existing=v.querySelector("h2"); v.innerHTML=""; if(existing)v.prepend(existing); v.innerHTML+=rows(list)+pagerHTML(); bindPager(); scrollTo(0,0) });
 }
 
+/* === Spotify (полные треки, нужен Premium) === */
+const SP_SCOPES = "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state";
+const spRedirect = () => location.origin + location.pathname;
+const spId = () => ls.get("sp-id","");
+const spLoggedIn = () => !!ls.get("sp-tok",null);
+let spPlayer = null, spDevice = null, spActive = false, spState = null, spStateAt = 0, spEndedFor = null;
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+async function spLogin(){
+  let id = spId();
+  if(!id){
+    id = (prompt("Вставьте Spotify Client ID (developer.spotify.com/dashboard).\nВ настройках приложения добавьте Redirect URI:\n"+spRedirect())||"").trim();
+    if(!id) return;
+    ls.set("sp-id",id);
+  }
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  ls.set("sp-ver", verifier);
+  location.href = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+    client_id:id, response_type:"code", redirect_uri:spRedirect(), scope:SP_SCOPES,
+    code_challenge_method:"S256", code_challenge:challenge
+  });
+}
+function spLogout(){
+  ls.set("sp-tok",null);
+  if(spPlayer){ spPlayer.disconnect(); spPlayer=null; spDevice=null }
+  spActive = false; render();
+}
+async function spTokenRequest(params){
+  const r = await fetch("https://accounts.spotify.com/api/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:spId(),...params})});
+  if(!r.ok) throw new Error("Spotify auth "+r.status);
+  const d = await r.json();
+  const old = ls.get("sp-tok",{});
+  ls.set("sp-tok",{access:d.access_token,refresh:d.refresh_token||old.refresh,exp:Date.now()+d.expires_in*1000});
+}
+async function spHandleRedirect(){
+  const p = new URLSearchParams(location.search);
+  if(!p.get("code")) return;
+  const code = p.get("code");
+  history.replaceState(null,"",location.pathname);
+  view = "sp";
+  try{ await spTokenRequest({grant_type:"authorization_code",code,redirect_uri:spRedirect(),code_verifier:ls.get("sp-ver","")}); toast("Spotify подключён") }
+  catch(e){ toast("⚠ "+e.message) }
+}
+async function spToken(){
+  const t = ls.get("sp-tok",null);
+  if(!t) throw new Error("Spotify: нужен вход");
+  if(Date.now() < t.exp-60000) return t.access;
+  await spTokenRequest({grant_type:"refresh_token",refresh_token:t.refresh});
+  return ls.get("sp-tok").access;
+}
+async function spApi(path,opts={}){
+  const r = await fetch("https://api.spotify.com/v1"+path,{...opts,headers:{Authorization:"Bearer "+await spToken(),"Content-Type":"application/json"}});
+  if(r.status===401 && !opts._retry){ const t=ls.get("sp-tok"); t.exp=0; ls.set("sp-tok",t); return spApi(path,{...opts,_retry:1}) }
+  if(!r.ok && r.status!==204) throw new Error("Spotify "+r.status);
+  return r.status===204 ? null : r.json();
+}
+async function spSearch(query,limit=50){
+  const d = await spApi("/search?type=track&limit="+limit+"&q="+encodeURIComponent(query));
+  return ((d.tracks&&d.tracks.items)||[]).map(t=>({
+    id:"sp_"+t.id, uri:t.uri, t:t.name, a:t.artists.map(x=>x.name).join(", "),
+    img:(t.album.images[1]||t.album.images[0]||{}).url||"", src:"", d:t.duration_ms/1000
+  }));
+}
+function spInitPlayer(){
+  if(!spLoggedIn() || spPlayer || window.__spLoading) return;
+  window.__spLoading = true;
+  window.onSpotifyWebPlaybackSDKReady = () => {
+    spPlayer = new Spotify.Player({name:"Музыка всегда с собой", getOAuthToken:cb=>spToken().then(cb).catch(()=>{}), volume:au.volume});
+    spPlayer.addListener("ready", ({device_id}) => { spDevice = device_id });
+    spPlayer.addListener("not_ready", () => { spDevice = null });
+    spPlayer.addListener("account_error", () => toast("⚠ Для Spotify нужен Premium"));
+    spPlayer.addListener("authentication_error", () => toast("⚠ Ошибка входа в Spotify"));
+    spPlayer.addListener("player_state_changed", st => {
+      if(!st || !spActive) return;
+      spState = st; spStateAt = Date.now();
+      $("pp").textContent = st.paused?"▶":"❚❚";
+      $("dur").textContent = fmt(st.duration/1000);
+      const id = st.track_window.current_track.id;
+      const finished = st.paused && st.position===0 && st.track_window.previous_tracks.some(t=>t.id===id);
+      if(finished && spEndedFor!==id){ spEndedFor = id; step(1) }
+    });
+    spPlayer.connect();
+  };
+  const sc = document.createElement("script");
+  sc.src = "https://sdk.scdn.co/spotify-player.js"; sc.async = true;
+  document.head.appendChild(sc);
+}
+setInterval(() => {
+  if(!spActive || !spState || spState.paused) return;
+  const pos = spState.position + (Date.now()-spStateAt);
+  $("cur").textContent = fmt(pos/1000);
+  $("seek").value = Math.min(1000, pos/spState.duration*1000);
+}, 500);
+async function spPlay(x){
+  try{
+    spEndedFor = null;
+    await spApi("/me/player/play?device_id="+spDevice,{method:"PUT",body:JSON.stringify({uris:[x.uri]})});
+  }catch(e){ toast("⚠ "+e.message); }
+}
+function spStop(){ if(spActive && spPlayer){ spPlayer.pause() } spActive = false }
+
+/* === YouTube (полные треки через встроенный плеер, без Premium) === */
+let ytPlayer = null, ytReady = false, ytActive = false, ytPending = null;
+const ytKey = () => ls.get("yt-key","");
+function ytAskKey(){
+  const k = (prompt("Вставьте YouTube Data API key.\nПолучить бесплатно: console.cloud.google.com → APIs → YouTube Data API v3 → Credentials → API key.")||"").trim();
+  if(k){ ls.set("yt-key",k); return true }
+  return false;
+}
+const decodeEnt = t => { const e=document.createElement("textarea"); e.innerHTML=t; return e.value };
+async function ytSearch(query,limit=20){
+  const ck = "yt-c:"+limit+":"+query, c = ls.get(ck,null);
+  if(c && Date.now()-c.at < 12*3600*1000) return c.v;
+  const r = await fetch("https://www.googleapis.com/youtube/v3/search?"+new URLSearchParams({part:"snippet",type:"video",videoCategoryId:"10",videoEmbeddable:"true",maxResults:limit,q:query,key:ytKey()}));
+  if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error("YouTube: "+((e.error&&e.error.message)||r.status)) }
+  const d = await r.json();
+  const v = (d.items||[]).map(i=>({
+    id:"yt_"+i.id.videoId, yt:i.id.videoId, t:decodeEnt(i.snippet.title), a:decodeEnt(i.snippet.channelTitle),
+    img:(i.snippet.thumbnails.medium||i.snippet.thumbnails.default||{}).url||"", src:"", d:0
+  }));
+  ls.set(ck,{at:Date.now(),v});
+  return v;
+}
+function ytInit(){
+  if(window.YT && YT.Player){ ytMake(); return }
+  if(window.__ytLoading) return;
+  window.__ytLoading = true;
+  window.onYouTubeIframeAPIReady = ytMake;
+  const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc);
+}
+function ytMake(){
+  if(ytPlayer) return;
+  ytPlayer = new YT.Player("ytp",{width:"200",height:"113",playerVars:{playsinline:1,rel:0,origin:location.origin},events:{
+    onReady:()=>{ ytReady = true; ytPlayer.setVolume(au.volume*100); if(ytPending){ const v=ytPending; ytPending=null; ytPlayer.loadVideoById(v) } },
+    onStateChange:e=>{
+      if(!ytActive) return;
+      if(e.data===1) $("pp").textContent="❚❚";
+      else if(e.data===2) $("pp").textContent="▶";
+      else if(e.data===0){ if(repeatMode===2){ ytPlayer.seekTo(0); ytPlayer.playVideo() } else step(1) }
+      if(e.data===1) $("dur").textContent = fmt(ytPlayer.getDuration());
+    },
+    onError:()=>{ toast("⚠ Это видео нельзя воспроизвести, следующее"); if(ytActive) step(1) }
+  }});
+}
+function ytPlay(x){
+  ytInit();
+  $("ytbox").classList.add("on");
+  if(ytReady) ytPlayer.loadVideoById(x.yt); else ytPending = x.yt;
+}
+function ytStop(){
+  if(ytActive && ytPlayer && ytReady) ytPlayer.pauseVideo();
+  ytActive = false; ytPending = null; $("ytbox").classList.remove("on");
+}
+setInterval(() => {
+  if(!ytActive || !ytReady || !ytPlayer.getDuration) return;
+  const d = ytPlayer.getDuration(); if(!d) return;
+  $("cur").textContent = fmt(ytPlayer.getCurrentTime());
+  $("seek").value = ytPlayer.getCurrentTime()/d*1000;
+}, 500);
+
 /* === Воспроизведение === */
 function play(i, from){
   if(from) queue = from;
   cur = i; const x = queue[cur];
   liveRadio = null;
-  au.src = x.src; au.play().catch(()=>{});
+  if(x.yt){
+    au.pause(); spStop(); ytActive = true; ytPlay(x);
+  } else if(x.uri){
+    ytStop();
+    if(!spDevice){ toast("Spotify ещё подключается, попробуйте через секунду"); return }
+    au.pause(); spActive = true; spPlay(x);
+  } else { spStop(); ytStop(); au.src = x.src; au.play().catch(()=>{}); }
   $("pt").textContent = x.t; $("pa").textContent = x.a + (radio?" · Моя волна":"");
   $("pcv").style.backgroundImage = `url('${x.img}')`; $("dur").textContent = fmt(x.d);
   $("plike").textContent = favs[x.id]?"♥":"♡";
@@ -457,7 +614,7 @@ function play(i, from){
 }
 function step(d){
   if(!queue.length) return;
-  if(repeatMode===2){ au.currentTime=0; au.play(); return }
+  if(repeatMode===2){ if(ytActive){ ytPlayer.seekTo(0); ytPlayer.playVideo() } else if(spActive){ spEndedFor=null; spPlayer.seek(0); spPlayer.resume() } else { au.currentTime=0; au.play() } return }
   let next;
   if(shuffleOn){ next=Math.floor(Math.random()*queue.length) }
   else { next = radio ? Math.floor(Math.random()*queue.length) : (cur+d+queue.length)%queue.length }
@@ -470,8 +627,8 @@ au.onplay = au.onpause = () => { $("pp").textContent = au.paused?"▶":"❚❚";
 au.ontimeupdate = () => { if(liveRadio) return; $("cur").textContent=fmt(au.currentTime); if(au.duration){ $("seek").value=au.currentTime/au.duration*1000; $("dur").textContent=fmt(au.duration) } };
 au.onended = () => { if(liveRadio){au.play();return} if(repeatMode===2){au.currentTime=0;au.play();return} step(1) };
 au.onerror = () => { if(liveRadio){toast("⚠ Поток радио прерван");liveRadio=null;render();return} if(queue.length>1) step(1) };
-$("seek").oninput = e => { if(liveRadio) return; if(au.duration) au.currentTime = e.target.value/1000*au.duration };
-$("pp").onclick = () => { if(liveRadio){au.paused?au.play():au.pause();return} if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
+$("seek").oninput = e => { if(ytActive && ytReady){ ytPlayer.seekTo(e.target.value/1000*ytPlayer.getDuration(),true); return } if(spActive && spState){ spPlayer.seek(e.target.value/1000*spState.duration); return } if(liveRadio) return; if(au.duration) au.currentTime = e.target.value/1000*au.duration };
+$("pp").onclick = () => { if(ytActive && !liveRadio){ ytPlayer.getPlayerState()===1 ? ytPlayer.pauseVideo() : ytPlayer.playVideo(); return } if(spActive && !liveRadio){ spPlayer.togglePlay(); return } if(liveRadio){au.paused?au.play():au.pause();return} if(cur<0){ if(list.length) play(0,list) } else au.paused?au.play():au.pause() };
 $("next").onclick = () => { if(liveRadio) return; step(1) }; $("prev").onclick = () => { if(liveRadio) return; step(-1) };
 $("plike").onclick = () => { if(cur<0||liveRadio) return; toggleLike(queue[cur]); $("plike").textContent=favs[queue[cur].id]?"♥":"♡"; if(view==="fav") render() };
 $("waveBtn").onclick = async () => {
@@ -561,6 +718,60 @@ if("serviceWorker" in navigator){
 }
 
 /* === Dynamic sky theme + Source toggle === */
+/* === Dynamic sky theme based on time of day === */
+function applySkyTheme(){
+  const h = new Date().getHours();
+  let theme;
+  if(h>=5 && h<11){
+    // Morning: рассвет с солнцем — soft pink-orange sunrise
+    theme = {
+      skyTop:'#ff9e7d', skyBottom:'#ffd29e',
+      sunColor:'#ff6b35', sunGlow:'rgba(255,150,80,0.6)',
+      stripeColor:'rgba(255,200,150,0.4)',
+      bg:'#ff9e7d', bg2:'#ffd29e', tx:'#3a1a0a', mu:'#6a3a1a',
+      ac:'#ff5c8a', ln:'rgba(80,40,20,0.15)'
+    };
+  } else if(h>=11 && h<17){
+    // Day: просто солнышко — bright blue sky with yellow sun
+    theme = {
+      skyTop:'#4a9fff', skyBottom:'#a3d5ff',
+      sunColor:'#ffeb3b', sunGlow:'rgba(255,235,59,0.7)',
+      stripeColor:'rgba(255,255,255,0.3)',
+      bg:'#4a9fff', bg2:'#a3d5ff', tx:'#0a1a3a', mu:'#2a4a7a',
+      ac:'#ff5c8a', ln:'rgba(255,255,255,0.2)'
+    };
+  } else if(h>=17 && h<21){
+    // Evening: закат — deep orange-red sunset
+    theme = {
+      skyTop:'#c43e3e', skyBottom:'#ff7e5f',
+      sunColor:'#ff3c1f', sunGlow:'rgba(255,80,40,0.7)',
+      stripeColor:'rgba(80,15,25,0.6)',
+      bg:'#c43e3e', bg2:'#ff7e5f', tx:'#fff0e8', mu:'#ffd0c0',
+      ac:'#ff5c8a', ln:'rgba(255,255,255,0.12)'
+    };
+  } else {
+    // Night: тёмная ночь с луной — dark night with moon
+    theme = {
+      skyTop:'#0a0a1f', skyBottom:'#1a1a3a',
+      sunColor:'#e8e8ff', sunGlow:'rgba(200,200,255,0.4)',
+      stripeColor:'rgba(80,80,140,0.4)',
+      bg:'#0a0a1f', bg2:'#1a1a3a', tx:'#e8e8ff', mu:'#8888bb',
+      ac:'#7c8cff', ln:'rgba(255,255,255,0.08)'
+    };
+  }
+  const r = document.documentElement.style;
+  r.setProperty('--bg', theme.bg);
+  r.setProperty('--bg2', theme.bg2);
+  r.setProperty('--tx', theme.tx);
+  r.setProperty('--mu', theme.mu);
+  r.setProperty('--ac', theme.ac);
+  r.setProperty('--ln', theme.ln);
+  r.setProperty('--sun-color', theme.sunColor);
+  r.setProperty('--sun-glow', theme.sunGlow);
+  r.setProperty('--stripe-color', theme.stripeColor);
+  r.setProperty('--sky-top', theme.skyTop);
+  r.setProperty('--sky-bottom', theme.skyBottom);
+}
 applySkyTheme();
 setInterval(applySkyTheme, 5*60*1000);
 
@@ -648,7 +859,7 @@ if(/Android/i.test(navigator.userAgent)){
   }, 1000);
 }
 
-render();
+spHandleRedirect().then(() => { if(view==="sp"){ document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("on",x.dataset.v==="sp")) } render(); spInitPlayer() });
 </script>
 
 <!-- Android Download -->

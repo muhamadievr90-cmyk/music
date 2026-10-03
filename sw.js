@@ -1,5 +1,5 @@
 // Service Worker: Музыка всегда с собой
-const CACHE = "music-v24";
+const CACHE = "music-v28";
 const STATIC = ["/", "/index.html", "/manifest.json"];
 const API_CACHE = "music-api-v1";
 const AUDIO_CACHE = "music-audio-v1";
@@ -31,6 +31,7 @@ self.addEventListener("activate", e => {
 // Fetch: network-first for HTML (instant updates), cache-first for static, cache audio
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
+  if (e.request.method !== "GET" || /spotify\.com$|scdn\.co$|youtube\.com$|googleapis\.com$|ytimg\.com$|googlevideo\.com$/.test(url.hostname)) return;
 
   // API requests: network-first, cache fallback
   if (url.hostname === "api.jamendo.com") {
